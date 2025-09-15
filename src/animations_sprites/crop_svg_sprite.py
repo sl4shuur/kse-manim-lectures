@@ -275,3 +275,38 @@ def calculate_bbox_recursive(
         bbox = bbox_of_path_d(element.get("d", ""), local)
 
     return bbox
+
+
+def build_clusters(items):
+    """
+    Cluster elements by intersections of their bboxes.
+    items: list[(ET.Element, bbox)]
+    returns: list[list[ET.Element]]
+    """
+    n = len(items)
+    if n == 0:
+        return []
+
+    parent = list(range(n))
+
+    def find(x):
+        if parent[x] != x:
+            parent[x] = find(parent[x])
+        return parent[x]
+
+    def union(x, y):
+        rx, ry = find(x), find(y)
+        if rx != ry:
+            parent[rx] = ry
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if should_cluster_together(items[i][1], items[j][1]):
+                union(i, j)
+
+    buckets = {}
+    for i in range(n):
+        r = find(i)
+        buckets.setdefault(r, []).append(items[i][0])
+
+    return list(buckets.values())

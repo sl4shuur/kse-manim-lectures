@@ -14,6 +14,12 @@ XLINK_NS = "http://www.w3.org/1999/xlink"
 ET.register_namespace("", SVG_NS)
 ET.register_namespace("xlink", XLINK_NS)
 
+# Clustering sensitivity:
+# Minimum absolute intersection area (px^2) to link two groups
+MIN_INTERSECTION_AREA = 100
+# Minimum intersection share vs. the smaller bbox to link two groups
+MIN_INTERSECTION_PERCENT = 0.10
+
 
 def tag(local: str) -> str:
     return f"{{{SVG_NS}}}{local}"
@@ -72,3 +78,58 @@ def apply_mat(M, x, y):
     """Apply 2x3 matrix to a point (x, y)."""
     a, b, c, d, e, f = M
     return (a * x + c * y + e, b * x + d * y + f)
+
+
+def bbox_union(A, B):
+    """Union of two bboxes (x1, y1, x2, y2)."""
+    if A is None:
+        return B
+    if B is None:
+        return A
+    return (min(A[0], B[0]), min(A[1], B[1]), max(A[2], B[2]), max(A[3], B[3]))
+
+
+def bbox_area(bbox):
+    """Area of bbox."""
+    if bbox is None:
+        return 0.0
+    x1, y1, x2, y2 = bbox
+    return max(0.0, x2 - x1) * max(0.0, y2 - y1)
+
+
+def bbox_intersection(A, B):
+    """Intersection of two bboxes, or None if disjoint."""
+    if A is None or B is None:
+        return None
+    ax1, ay1, ax2, ay2 = A
+    bx1, by1, bx2, by2 = B
+    x1 = max(ax1, bx1)
+    y1 = max(ay1, by1)
+    x2 = min(ax2, bx2)
+    y2 = min(ay2, by2)
+    if x1 >= x2 or y1 >= y2:
+        return None
+    return (x1, y1, x2, y2)
+
+
+def should_cluster_together(bbox1, bbox2):
+    """
+    Decide if two bboxes should be linked in the same cluster.
+    Requires both a minimum absolute area and a minimum relative share
+    w.r.t. the smaller bbox.
+    """
+    inter = bbox_intersection(bbox1, bbox2)
+    if inter is None:
+        return False
+
+    inter_area = bbox_area(inter)
+    if inter_area < MIN_INTERSECTION_AREA:
+        return False
+
+    area1 = bbox_area(bbox1)
+    area2 = bbox_area(bbox2)
+    smaller = min(area1, area2)
+    if smaller > 0:
+        share = inter_area / smaller
+        return share >= MIN_INTERSECTION_PERCENT
+    return False

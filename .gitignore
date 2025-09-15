@@ -208,3 +208,6 @@ __marimo__/
 
 # Manim media (renders, videos, images, etc.)
 media/
+
+# VS Code folder (debug configs, etc.)
+.vscode/

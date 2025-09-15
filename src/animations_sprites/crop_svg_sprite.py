@@ -52,6 +52,9 @@ def _find_inkscape_binary() -> str:
         r"C:\Program Files\Inkscape\bin\inkscape.com",  # Windows
         r"C:\Program Files\Inkscape\bin\inkscape.exe",
         r"C:\Program Files (x86)\Inkscape\bin\inkscape.com",
+        r"C:\Program Files (x86)\Inkscape\bin\inkscape.exe",
+        "/usr/bin/inkscape",  # Linux
+        "/usr/local/bin/inkscape",
     ]
     for path in candidates:
         if Path(path).exists():
@@ -433,3 +436,45 @@ def get_cropped_poses(
             print(f"✓ {out_path.name}")
 
     print(f"\nDone! Created {len(clusters)} files in: {output_dir}")
+
+
+def get_all_cropped_poses(
+    input_dir: str | Path = SPRITES_SHEETS_DIR,
+    output_dir: str | Path = OUTPUT_DIR,
+    prefix: str = PREFIX,
+) -> list[Path]:
+    """
+    Get all cropped poses from SVG files in the input directory.
+
+    Args:
+        input_dir (str | Path, optional): The directory containing input SVG files. Defaults to SPRITES_SHEETS_DIR.
+        output_dir (str | Path, optional): The directory to save output SVG files. Defaults to OUTPUT_DIR.
+        prefix (str, optional): The prefix for output file names. Defaults to PREFIX.
+
+    Raises:
+        FileNotFoundError: If the input directory is not found.
+
+    Returns:
+        list[Path]: A list of output directories created for each SVG file.
+    """
+    input_dir = Path(input_dir)
+    output_dir = Path(output_dir)
+
+    if not input_dir.exists() or not input_dir.is_dir():
+        raise FileNotFoundError(f"Input directory not found: {input_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_dirs = []
+
+    for svg_file in input_dir.glob("*.svg"):
+        sprite_name = svg_file.stem
+
+        curr_output_dir = output_dir / sprite_name
+        curr_output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\nProcessing '{svg_file.name}' into '{curr_output_dir}'")
+
+        get_cropped_poses(svg_file, curr_output_dir, prefix)
+        output_dirs.append(curr_output_dir)
+        print("-" * 40)
+    return output_dirs

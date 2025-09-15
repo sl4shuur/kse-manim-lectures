@@ -211,3 +211,6 @@ media/
 
 # VS Code folder (debug configs, etc.)
 .vscode/
+
+# Strites Poses folder (cropped SVGs)
+assets/sprites_poses/

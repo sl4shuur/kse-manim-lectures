@@ -1,5 +1,10 @@
+import os
 import re
+import shutil
+import tempfile
+import subprocess
 import xml.etree.ElementTree as ET
+from copy import deepcopy
 from pathlib import Path
 
 from src.utils.config import SPRITES_SHEETS_DIR, SPRITES_POSES_DIR
@@ -27,6 +32,32 @@ def tag(local: str) -> str:
 
 def tagn(el: ET.Element) -> str:
     return el.tag.split("}")[-1]
+
+
+def _find_inkscape_binary() -> str:
+    """
+    Locate Inkscape binary (env -> PATH -> common install locations).
+    """
+    env_bin = os.environ.get("INKSCAPE_BIN")
+    if env_bin and Path(env_bin).exists():
+        return env_bin
+
+    for name in ("inkscape", "inkscape.com"):
+        path = shutil.which(name)
+        if path:
+            return path
+
+    candidates = [
+        "/Applications/Inkscape.app/Contents/MacOS/inkscape",  # macOS
+        r"C:\Program Files\Inkscape\bin\inkscape.com",  # Windows
+        r"C:\Program Files\Inkscape\bin\inkscape.exe",
+        r"C:\Program Files (x86)\Inkscape\bin\inkscape.com",
+    ]
+    for path in candidates:
+        if Path(path).exists():
+            return path
+
+    raise RuntimeError("Inkscape not found. Install it or set INKSCAPE_BIN.")
 
 
 def mat_identity():
@@ -310,3 +341,95 @@ def build_clusters(items):
         buckets.setdefault(r, []).append(items[i][0])
 
     return list(buckets.values())
+
+
+def export_with_inkscape(
+    inkscape_binary: str, source_svg: Path, output_svg: Path
+) -> None:
+    """
+    Export SVG via Inkscape cropped to drawing bounds.
+    """
+    command = [
+        inkscape_binary,
+        "--export-type=svg",
+        "--export-plain-svg",
+        "--export-area-drawing",
+        f"--export-filename={output_svg}",
+        str(source_svg),
+    ]
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Inkscape export failed:\nSTDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+        )
+
+
+def get_cropped_poses(
+    input_file: str | Path = INPUT_FILE,
+    output_dir: str | Path = OUTPUT_DIR,
+    prefix: str = PREFIX,
+):
+    """
+    End-to-end pipeline:
+    - parse input SVG file
+    - build id map from <defs>
+    - collect root <g> groups and compute bboxes
+    - cluster groups by intersection rule
+    - build minimal SVG per cluster and export via Inkscape
+    """
+    input_file = Path(input_file)
+    output_dir = Path(output_dir)
+
+    if not input_file.exists():
+        raise FileNotFoundError(f"Input file not found: {input_file}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    tree = ET.parse(input_file)
+    root = tree.getroot()
+
+    defs = next((child for child in root if child.tag == tag("defs")), None)
+    id_map = build_id_map(defs) if defs is not None else {}
+
+    root_groups = [el for el in root if tagn(el) == "g"]
+    items = []
+    for g in root_groups:
+        bbox = calculate_bbox_recursive(g, mat_identity(), id_map)
+        if bbox is not None:
+            items.append((g, bbox))
+
+    if not items:
+        raise RuntimeError("No root groups with geometry were found.")
+
+    print(f"Found {len(items)} groups with geometry")
+
+    clusters = build_clusters(items)
+    print(f"Built {len(clusters)} clusters")
+
+    inkscape_binary = _find_inkscape_binary()
+
+    for idx, cluster_groups in enumerate(clusters, start=1):
+        new_root = ET.Element(tag("svg"))
+        for attr in ("width", "height", "viewBox"):
+            val = root.get(attr)
+            if val:
+                new_root.set(attr, val)
+
+        if defs is not None:
+            new_root.append(deepcopy(defs))
+
+        wrap = ET.SubElement(new_root, tag("g"), {"id": f"cluster_{idx:02d}"})
+        for g in cluster_groups:
+            wrap.append(deepcopy(g))
+
+        with tempfile.TemporaryDirectory() as td:
+            tmp_svg = Path(td) / f"cluster_{idx:02d}.svg"
+            ET.ElementTree(new_root).write(
+                tmp_svg, encoding="utf-8", xml_declaration=True
+            )
+
+            out_path = output_dir / f"{prefix}_{idx:02d}.svg"
+            export_with_inkscape(inkscape_binary, tmp_svg, out_path)
+            print(f"✓ {out_path.name}")
+
+    print(f"\nDone! Created {len(clusters)} files in: {output_dir}")

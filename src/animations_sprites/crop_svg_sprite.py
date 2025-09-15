@@ -230,3 +230,48 @@ def bbox_of_path_d(d: str, transform_matrix):
     transformed = [apply_mat(transform_matrix, x, y) for x, y in points]
     xs, ys = zip(*transformed)
     return (min(xs), min(ys), max(xs), max(ys))
+
+
+def build_id_map(defs: ET.Element) -> dict[str, ET.Element]:
+    """Build id -> element map for <defs> symbols/groups."""
+    id_map = {}
+    if defs is None:
+        return id_map
+    for element in defs.iter():
+        element_id = element.attrib.get("id")
+        if element_id:
+            id_map[element_id] = element
+    return id_map
+
+
+def calculate_bbox_recursive(
+    element: ET.Element, parent_matrix, id_map
+) -> tuple | None:
+    """
+    Recursively compute a bbox for an element considering transforms.
+    Supports <g>, <use>, and <path>.
+    """
+    bbox = None
+    name = tagn(element)
+
+    if name == "g":
+        local = mat_mul(parent_matrix, mat_from_transform(element.get("transform", "")))
+        for child in element:
+            child_bbox = calculate_bbox_recursive(child, local, id_map)
+            bbox = bbox_union(bbox, child_bbox)
+
+    elif name == "use":
+        href = element.attrib.get(f"{{{XLINK_NS}}}href")
+        if href and href.startswith("#"):
+            target = id_map.get(href[1:])
+            if target is not None:
+                local = mat_mul(
+                    parent_matrix, mat_from_transform(element.get("transform", ""))
+                )
+                bbox = calculate_bbox_recursive(target, local, id_map)
+
+    elif name == "path":
+        local = mat_mul(parent_matrix, mat_from_transform(element.get("transform", "")))
+        bbox = bbox_of_path_d(element.get("d", ""), local)
+
+    return bbox

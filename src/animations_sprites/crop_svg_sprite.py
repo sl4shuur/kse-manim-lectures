@@ -133,3 +133,100 @@ def should_cluster_together(bbox1, bbox2):
         share = inter_area / smaller
         return share >= MIN_INTERSECTION_PERCENT
     return False
+
+
+def path_points_from_d(d: str):
+    """
+    Extract control points from path 'd'. Handles M/L/H/V/C/Q/S/T (abs/rel).
+    For curves we include control points and end points to over-approximate bbox.
+    """
+    if not d:
+        return []
+
+    tokens = re.findall(r"([MmLlHhVvCcQqSsTtZz])|([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)", d)
+    points = []
+    current_pos = (0.0, 0.0)
+
+    command_groups = []
+    current_command = None
+    current_numbers = []
+
+    for cmd_flag, number in tokens:
+        if cmd_flag:
+            if current_command and current_numbers:
+                command_groups.append((current_command, current_numbers))
+            current_command = cmd_flag
+            current_numbers = []
+        elif number:
+            current_numbers.append(float(number))
+
+    if current_command and current_numbers:
+        command_groups.append((current_command, current_numbers))
+
+    def add_point(x, y, relative=False):
+        nonlocal current_pos
+        if relative:
+            current_pos = (current_pos[0] + x, current_pos[1] + y)
+        else:
+            current_pos = (x, y)
+        points.append(current_pos)
+
+    for command, numbers in command_groups:
+        if not command:
+            continue
+
+        is_rel = command.islower()
+        cmd = command.upper()
+        vals = numbers
+        i = 0
+
+        while i < len(vals):
+            if cmd in ("M", "L", "T") and i + 1 < len(vals):
+                add_point(vals[i], vals[i + 1], relative=is_rel)
+                i += 2
+            elif cmd == "H" and i < len(vals):
+                add_point(vals[i], current_pos[1], relative=is_rel)
+                i += 1
+            elif cmd == "V" and i < len(vals):
+                add_point(current_pos[0], vals[i], relative=is_rel)
+                i += 1
+            elif cmd == "C" and i + 5 < len(vals):
+                if is_rel:
+                    points.extend(
+                        [
+                            (current_pos[0] + vals[i], current_pos[1] + vals[i + 1]),
+                            (
+                                current_pos[0] + vals[i + 2],
+                                current_pos[1] + vals[i + 3],
+                            ),
+                        ]
+                    )
+                    add_point(vals[i + 4], vals[i + 5], relative=True)
+                else:
+                    points.extend([(vals[i], vals[i + 1]), (vals[i + 2], vals[i + 3])])
+                    add_point(vals[i + 4], vals[i + 5], relative=False)
+                i += 6
+            elif cmd in ("Q", "S") and i + 3 < len(vals):
+                if is_rel:
+                    points.append(
+                        (current_pos[0] + vals[i], current_pos[1] + vals[i + 1])
+                    )
+                    add_point(vals[i + 2], vals[i + 3], relative=True)
+                else:
+                    points.append((vals[i], vals[i + 1]))
+                    add_point(vals[i + 2], vals[i + 3], relative=False)
+                i += 4
+            else:
+                break
+
+    return points
+
+
+def bbox_of_path_d(d: str, transform_matrix):
+    """Compute a path bbox after applying the transform matrix."""
+    points = path_points_from_d(d)
+    if not points:
+        return None
+    transformed = [apply_mat(transform_matrix, x, y) for x, y in points]
+    xs, ys = zip(*transformed)
+    return (min(xs), min(ys), max(xs), max(ys))

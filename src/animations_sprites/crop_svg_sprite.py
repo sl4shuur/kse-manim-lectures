@@ -373,6 +373,17 @@ def get_cropped_poses(
     prefix: str = PREFIX,
 ):
     """
+    Crop poses from a single SVG sprite sheet.
+
+    Args:
+        input_file (str | Path, optional): The input SVG file to crop. Defaults to INPUT_FILE.
+        output_dir (str | Path, optional): The directory to save cropped poses. Defaults to OUTPUT_DIR.
+        prefix (str, optional): The prefix for output file names. Defaults to PREFIX.
+
+    Raises:
+        FileNotFoundError: If the input file is not found.
+        RuntimeError: If no valid poses are found.
+
     End-to-end pipeline:
     - parse input SVG file
     - build id map from <defs>
@@ -384,7 +395,11 @@ def get_cropped_poses(
     output_dir = Path(output_dir)
 
     if not input_file.exists():
-        raise FileNotFoundError(f"Input file not found: {input_file}")
+        new_input = Path(SPRITES_SHEETS_DIR) / input_file
+        if new_input.exists():
+            input_file = new_input
+        else:
+            raise FileNotFoundError(f"Input file not found: {input_file} and {new_input}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
 

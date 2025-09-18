@@ -9,6 +9,13 @@ These files were sourced from [Kenney.nl](https://kenney.nl/assets/platformer-ch
 
 You can find other sprite assets on Internet resources or create your own using vector graphic software like Adobe Illustrator or Inkscape.
 
+## How to crop into poses
+
+[!IMPORTANT]
+Before using the sprites, ensure that you have uploaded the SVG file(s) of sheet to the `assets/sprites_sheets` directory.
+
+To extract individual poses from a sprite sheet SVG file, you can use the `extract_poses_from_sprite_svg.py` script located in the root directory. This script will help you crop the sprite sheet into separate SVG files for each pose.
+
 ## Usage
 
 To use these sprites in your Manim scenes, you can import the `Sprite` class from the `manim_sprites` module and create instances of it in your scenes. For example:

@@ -11,8 +11,8 @@ You can find other sprite assets on Internet resources or create your own using 
 
 ## How to crop into poses
 
-[!IMPORTANT]
-Before using the sprites, ensure that you have uploaded the SVG file(s) of sheet to the `assets/sprites_sheets` directory.
+> [!IMPORTANT]
+> Before using the sprites, ensure that you have uploaded the SVG file(s) of sheet to the `assets/sprites_sheets` directory.
 
 To extract individual poses from a sprite sheet SVG file, you can use the `extract_poses_from_sprite_svg.py` script located in the root directory. This script will help you crop the sprite sheet into separate SVG files for each pose.
 

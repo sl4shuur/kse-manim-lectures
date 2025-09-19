@@ -214,3 +214,6 @@ media/
 
 # Strites Poses folder (cropped SVGs)
 assets/sprites_poses/
+
+# debug script
+debug.py

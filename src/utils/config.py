@@ -15,4 +15,4 @@ for directory in [ASSETS_DIR, SPRITES_SHEETS_DIR, SPRITES_POSES_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
 POSE_PREFIX = "pose_"
-POSES_NUM_LIST = ["04", "05", "06", "14", "15", "18", "19", "24"]
+POSES_NUM_LIST = ["01", "08", "09", "12", "13", "14", "15", "16", "19", "24"]

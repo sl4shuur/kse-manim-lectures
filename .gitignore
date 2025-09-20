@@ -208,3 +208,12 @@ __marimo__/
 
 # Manim media (renders, videos, images, etc.)
 media/
+
+# VS Code folder (debug configs, etc.)
+.vscode/
+
+# Strites Poses folder (cropped SVGs)
+assets/sprites_poses/
+
+# debug script
+debug.py

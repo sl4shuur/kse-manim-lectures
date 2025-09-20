@@ -1,11 +1,13 @@
-from src.animations_sprites.manim_sprtites import PoseSwitcher
+from src.animations_sprites.manim_sprtites import PoseSwitcher, AllSpritesAnimation
 
 if __name__ == "__main__":
     import os
     from pathlib import Path
 
-    scene_to_render = PoseSwitcher.__name__
-    file_name = PoseSwitcher.__module__.replace(".", "/") + ".py"
+    class_to_render = AllSpritesAnimation
+
+    scene_to_render = class_to_render.__name__
+    file_name = class_to_render.__module__.replace(".", "/") + ".py"
     print(f"Rendering scene: {scene_to_render}")
 
     project_dir = Path(__file__).resolve().parent

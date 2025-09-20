@@ -16,18 +16,31 @@ You can find other sprite assets on Internet resources or create your own using 
 
 To extract individual poses from a sprite sheet SVG file, you can use the `extract_poses_from_sprite_svg.py` script located in the root directory. This script will help you crop the sprite sheet into separate SVG files for each pose.
 
+Run the script with the following command:
+
+```bash
+uv run python extract_poses_from_sprite_svg.py
+```
+
+and follow the prompts to specify the input SVG file and/or the desired sheets directory.
+
 ## Usage
 
-To use these sprites in your Manim scenes, you can import the `Sprite` class from the `manim_sprites` module and create instances of it in your scenes. For example:
+To use these sprites in your Manim scenes, you can import the `ManimSprite` class from the `src.animations_sprites.ManimSprite` module and create instances of it in your scenes. For example:
 
 ```python
-from manim import *
-from src.animations_sprites.manim_sprites import Sprite
+from manim import *  # type: ignore
+from src.animations_sprites.ManimSprite import ManimSprite
 
 class MyScene(Scene):
     def construct(self):
-        sprite = Sprite()
-        self.add(sprite)
-        self.play(DrawBorderThenFill(sprite))
+        sprite = ManimSprite("adventurer", scale=3)
+        self.play(DrawBorderThenFill(sprite.cur_manim_svgmobject))
+        self.wait(1)
+
+        sprite.set_pose("08")
+        self.play(Transform(sprite.old_manim_svgmobject, sprite.cur_manim_svgmobject))
         self.wait(1)
 ```
+
+See more examples in the `manim_sprites.py` file.

@@ -1,4 +1,4 @@
-from src.animations_sprites.manim_sprtites import PoseSwitcher, AllSpritesAnimation
+from src.animations_sprites.manim_sprites import PoseSwitcher, AllSpritesAnimation
 
 if __name__ == "__main__":
     import os

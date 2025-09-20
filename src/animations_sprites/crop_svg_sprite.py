@@ -9,11 +9,11 @@ import numpy as np
 from PIL import Image
 import cairosvg
 
-from src.utils.config import SPRITES_SHEETS_DIR, SPRITES_POSES_DIR
+from src.utils.config import SPRITES_SHEETS_DIR, SPRITES_POSES_DIR, POSE_PREFIX
 
 INPUT_FILE = SPRITES_SHEETS_DIR / "player_vector.svg"
 OUTPUT_DIR = SPRITES_POSES_DIR
-PREFIX = "pose"
+PREFIX = POSE_PREFIX
 
 # Parameters
 RASTER_SCALE = 1.0
@@ -231,7 +231,7 @@ def _export_pose_svgs(
     components: List[List[int]],
     bboxes: List[Tuple[float, float, float, float]],
     out_dir: Path,
-    prefix: str = "pose",
+    prefix: str = PREFIX,
 ) -> List[Path]:
     """Export each component as a standalone SVG with tight viewBox."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -250,7 +250,7 @@ def _export_pose_svgs(
         children = (groups[i][1] for i in comp_sorted)
 
         svg_str = _build_svg_wrapper(children, (x0, y0, w, h), root)
-        out_path = out_dir / f"{prefix}_{k:02d}.svg"
+        out_path = out_dir / f"{prefix}{k:02d}.svg"
         out_path.write_text(svg_str, encoding="utf-8")
         exported.append(out_path)
 
@@ -277,7 +277,7 @@ def get_cropped_poses(
         RuntimeError: If no valid poses are detected after clustering.
 
     Returns:
-        List[Path]: A list of output SVG file paths.
+        Path: The output directory containing the cropped SVG files.
     """
     input_file = Path(input_file)
     output_dir = Path(output_dir) / input_file.stem
@@ -325,14 +325,14 @@ def get_cropped_poses(
 def get_all_cropped_poses(
     sheets_dir: str | Path = SPRITES_SHEETS_DIR,
     poses_dir: str | Path = OUTPUT_DIR,
-    prefix: str = "pose",
+    prefix: str = PREFIX,
 ) -> List[Path]:
     """
     Get all cropped poses from SVG files in the input directory.
 
     Args:
-        input_dir (str | Path, optional): The directory containing input SVG files. Defaults to SPRITES_SHEETS_DIR.
-        output_dir (str | Path, optional): The directory to save output SVG files. Defaults to OUTPUT_DIR.
+        sheets_dir (str | Path, optional): The directory containing input SVG files. Defaults to SPRITES_SHEETS_DIR.
+        poses_dir (str | Path, optional): The directory to save output SVG files. Defaults to OUTPUT_DIR.
         prefix (str, optional): The prefix for output file names. Defaults to PREFIX.
 
     Raises:

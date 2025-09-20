@@ -18,7 +18,6 @@ class ManimSprite:
         self.poses_dir = Path(poses_dir) if poses_dir else self._get_poses_dir()
         self.scale = scale
         self.position = position
-        self.poses_dir = self._get_poses_dir()
         self.pose_prefix = pose_prefix
         self.poses_num_list = POSES_NUM_LIST
         self.cur_manim_svgmobject = self._get_manim_svgmobject(self.poses_num_list[0])

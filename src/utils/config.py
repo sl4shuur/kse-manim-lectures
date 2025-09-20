@@ -13,3 +13,6 @@ for directory in [ASSETS_DIR, SPRITES_SHEETS_DIR, SPRITES_POSES_DIR]:
     if directory.exists() and directory.is_file():
         directory.unlink()  # Remove the file if a file exists with the same name
     directory.mkdir(parents=True, exist_ok=True)
+
+POSE_PREFIX = "pose_"
+POSES_NUM_LIST = ["04", "05", "06", "14", "15", "18", "19", "24"]

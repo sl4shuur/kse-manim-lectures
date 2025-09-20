@@ -261,7 +261,7 @@ def get_cropped_poses(
     input_file: str | Path = INPUT_FILE,
     output_dir: str | Path = OUTPUT_DIR,
     prefix: str = PREFIX,
-) -> List[Path]:
+) -> Path:
     """
     Smart sprite cropping entry point.
 
@@ -280,7 +280,9 @@ def get_cropped_poses(
         List[Path]: A list of output SVG file paths.
     """
     input_file = Path(input_file)
-    output_dir = Path(output_dir)
+    output_dir = Path(output_dir) / input_file.stem
+
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     if not input_file.exists():
         raise FileNotFoundError(f"Input file not found: {input_file}")
@@ -316,12 +318,13 @@ def get_cropped_poses(
     if not comps:
         raise RuntimeError("No valid poses detected after clustering.")
 
-    return _export_pose_svgs(root, valid_groups, comps, bboxes, output_dir, prefix)
+    _export_pose_svgs(root, valid_groups, comps, bboxes, output_dir, prefix)
+    return output_dir
 
 
 def get_all_cropped_poses(
-    input_dir: str | Path = SPRITES_SHEETS_DIR,
-    output_dir: str | Path = OUTPUT_DIR,
+    sheets_dir: str | Path = SPRITES_SHEETS_DIR,
+    poses_dir: str | Path = OUTPUT_DIR,
     prefix: str = "pose",
 ) -> List[Path]:
     """
@@ -338,26 +341,22 @@ def get_all_cropped_poses(
     Returns:
         list[Path]: A list of output directories created for each SVG file.
     """
-    input_dir = Path(input_dir)
-    output_dir = Path(output_dir)
+    sheets_dir = Path(sheets_dir)
+    poses_dir = Path(poses_dir)
 
-    if not input_dir.exists() or not input_dir.is_dir():
-        raise FileNotFoundError(f"Input directory not found: {input_dir}")
+    if not sheets_dir.exists() or not sheets_dir.is_dir():
+        raise FileNotFoundError(f"Input directory not found: {sheets_dir}")
 
-    output_dir.mkdir(parents=True, exist_ok=True)
 
     output_dirs = []
 
-    for svg_file in input_dir.glob("*.svg"):
-        sprite_name = svg_file.stem
+    for svg_file in sheets_dir.glob("*.svg"):
+        print(f"\nProcessing '{svg_file.name}' into '{poses_dir}'")
 
-        curr_output_dir = output_dir / sprite_name
-        curr_output_dir.mkdir(parents=True, exist_ok=True)
-        print(f"\nProcessing '{svg_file.name}' into '{curr_output_dir}'")
-
-        get_cropped_poses(svg_file, curr_output_dir, prefix)
-        output_dirs.append(curr_output_dir)
+        output_dir = get_cropped_poses(svg_file, poses_dir, prefix)
+        output_dirs.append(output_dir)
         print("-" * 40)
+
     return output_dirs
 
 

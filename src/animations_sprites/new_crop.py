@@ -11,8 +11,9 @@ import cairosvg
 
 from src.utils.config import SPRITES_SHEETS_DIR, SPRITES_POSES_DIR
 
-DEFAULT_INPUT = SPRITES_SHEETS_DIR / "player_vector.svg"
-DEFAULT_OUTPUT_DIR = SPRITES_POSES_DIR
+INPUT_FILE = SPRITES_SHEETS_DIR / "player_vector.svg"
+OUTPUT_DIR = SPRITES_POSES_DIR
+PREFIX = "pose"
 
 # Parameters
 RASTER_SCALE = 1.0
@@ -44,17 +45,18 @@ def _get_canvas_size(root: ET.Element) -> Tuple[float, float]:
     if vb:
         _, _, w, h = map(float, vb.split())
         return w, h
-    
+
     def _num(s: str | None) -> float:
         return float(str(s).replace("px", "")) if s else 1000.0
-    
+
     return _num(root.get("width")), _num(root.get("height"))
 
 
 def _collect_top_groups(root: ET.Element) -> List[Tuple[int, ET.Element]]:
     """Collect top-level <g> elements only."""
-    return [(idx, child) for idx, child in enumerate(root) 
-            if _localname(child.tag) == "g"]
+    return [
+        (idx, child) for idx, child in enumerate(root) if _localname(child.tag) == "g"
+    ]
 
 
 def _build_svg_wrapper(
@@ -73,12 +75,12 @@ def _build_svg_wrapper(
     }
     attr_str = " ".join(f'{k}="{v}"' for k, v in attrs.items())
     parts = [f"<svg {attr_str}>"]
-    
+
     if copy_defs_from is not None:
         defs = copy_defs_from.find(f".//{{{NS_SVG}}}defs")
         if defs is not None:
             parts.append(ET.tostring(defs, encoding="unicode"))
-    
+
     parts.append("<g>")
     parts.extend(ET.tostring(el, encoding="unicode") for el in children)
     parts.append("</g></svg>")
@@ -101,12 +103,12 @@ def _build_single_group_svg(
     }
     attr_str = " ".join(f'{k}="{v}"' for k, v in attrs.items())
     parts = [f"<svg {attr_str}>"]
-    
+
     if copy_defs_from is not None:
         defs = copy_defs_from.find(f".//{{{NS_SVG}}}defs")
         if defs is not None:
             parts.append(ET.tostring(defs, encoding="unicode"))
-    
+
     parts.append(ET.tostring(group, encoding="unicode"))
     parts.append("</svg>")
     return "".join(parts)
@@ -130,13 +132,13 @@ def _raster_bbox_of_group(
 
     if png_bytes is None:
         raise RuntimeError("cairosvg.svg2png returned None")
-    
+
     img = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
     alpha = np.array(img)[..., 3]
     ys, xs = np.where(alpha > alpha_threshold)
     if xs.size == 0:
         return None
-    
+
     xmin_px, xmax_px = xs.min(), xs.max()
     ymin_px, ymax_px = ys.min(), ys.max()
     return (
@@ -147,16 +149,22 @@ def _raster_bbox_of_group(
     )
 
 
-def _rects_intersect(a: Tuple[float, float, float, float],
-                    b: Tuple[float, float, float, float],
-                    pad: float = 0.0) -> bool:
+def _rects_intersect(
+    a: Tuple[float, float, float, float],
+    b: Tuple[float, float, float, float],
+    pad: float = 0.0,
+) -> bool:
     """Check if two rectangles intersect with optional padding."""
     ax0, ay0, ax1, ay1 = a
     bx0, by0, bx1, by1 = b
-    return not (ax1 <= bx0 - pad or bx1 <= ax0 - pad or ay1 <= by0 - pad or by1 <= ay0 - pad)
+    return not (
+        ax1 <= bx0 - pad or bx1 <= ax0 - pad or ay1 <= by0 - pad or by1 <= ay0 - pad
+    )
 
 
-def _union_bbox(rects: List[Tuple[float, float, float, float]]) -> Tuple[float, float, float, float]:
+def _union_bbox(
+    rects: List[Tuple[float, float, float, float]],
+) -> Tuple[float, float, float, float]:
     """Compute union bbox for a list of rectangles."""
     xs = [coord for rect in rects for coord in (rect[0], rect[2])]
     ys = [coord for rect in rects for coord in (rect[1], rect[3])]
@@ -249,17 +257,43 @@ def _export_pose_svgs(
     return exported
 
 
-def crop_svg_sprites(
-    input_file: Path = DEFAULT_INPUT,
-    output_dir: Path = DEFAULT_OUTPUT_DIR,
-    prefix: str = "pose",
+def get_cropped_poses(
+    input_file: str | Path = INPUT_FILE,
+    output_dir: str | Path = OUTPUT_DIR,
+    prefix: str = PREFIX,
 ) -> List[Path]:
-    """Smart sprite cropping entry point."""
+    """
+    Smart sprite cropping entry point.
+
+    Args:
+        input_file (str | Path, optional): The input SVG file to process. Defaults to INPUT_FILE.
+        output_dir (str | Path, optional): The directory to save output SVG files. Defaults to OUTPUT_DIR.
+        prefix (str, optional): The prefix for output file names. Defaults to PREFIX.
+
+    Raises:
+        FileNotFoundError: If the input file is not found.
+        FileNotFoundError: If the input directory is not found.
+        RuntimeError: If no drawable top-level <g> elements are detected.
+        RuntimeError: If no valid poses are detected after clustering.
+
+    Returns:
+        List[Path]: A list of output SVG file paths.
+    """
     input_file = Path(input_file)
     output_dir = Path(output_dir)
 
     if not input_file.exists():
         raise FileNotFoundError(f"Input file not found: {input_file}")
+
+    # check if input file is directory
+    if input_file.is_dir():
+        print(f"Input is a directory. Processing first SVG file found in it.")
+        svg_files = list(input_file.glob("*.svg"))
+        if not svg_files:
+            raise FileNotFoundError(f"No SVG files found in directory: {input_file}")
+
+        input_file = svg_files[0]
+
 
     root = _parse_svg(input_file)
     base_w, base_h = _get_canvas_size(root)
@@ -285,23 +319,47 @@ def crop_svg_sprites(
     return _export_pose_svgs(root, valid_groups, comps, bboxes, output_dir, prefix)
 
 
-def crop_all_sprites(
-    input_dir: Path = DEFAULT_INPUT.parent,
-    output_dir: Path = DEFAULT_OUTPUT_DIR,
+def get_all_cropped_poses(
+    input_dir: str | Path = SPRITES_SHEETS_DIR,
+    output_dir: str | Path = OUTPUT_DIR,
     prefix: str = "pose",
-) -> None:
-    """Batch-process all *.svg files in input_dir."""
+) -> List[Path]:
+    """
+    Get all cropped poses from SVG files in the input directory.
+
+    Args:
+        input_dir (str | Path, optional): The directory containing input SVG files. Defaults to SPRITES_SHEETS_DIR.
+        output_dir (str | Path, optional): The directory to save output SVG files. Defaults to OUTPUT_DIR.
+        prefix (str, optional): The prefix for output file names. Defaults to PREFIX.
+
+    Raises:
+        FileNotFoundError: If the input directory is not found.
+
+    Returns:
+        list[Path]: A list of output directories created for each SVG file.
+    """
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
 
-    for svg_path in sorted(input_dir.glob("*.svg")):
-        target_dir = output_dir / svg_path.stem
-        target_dir.mkdir(parents=True, exist_ok=True)
-        print(f"[INFO] Processing {svg_path.name} → {target_dir}")
-        exported = crop_svg_sprites(svg_path, target_dir, prefix=prefix)
-        print(f"[OK] Exported {len(exported)} poses.")
+    if not input_dir.exists() or not input_dir.is_dir():
+        raise FileNotFoundError(f"Input directory not found: {input_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_dirs = []
+
+    for svg_file in input_dir.glob("*.svg"):
+        sprite_name = svg_file.stem
+
+        curr_output_dir = output_dir / sprite_name
+        curr_output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"\nProcessing '{svg_file.name}' into '{curr_output_dir}'")
+
+        get_cropped_poses(svg_file, curr_output_dir, prefix)
+        output_dirs.append(curr_output_dir)
+        print("-" * 40)
+    return output_dirs
 
 
 if __name__ == "__main__":
-    out = crop_svg_sprites(DEFAULT_INPUT, DEFAULT_OUTPUT_DIR, prefix="pose")
-    print(f"Done. Exported {len(out)} poses into: {DEFAULT_OUTPUT_DIR}")
+    get_cropped_poses()

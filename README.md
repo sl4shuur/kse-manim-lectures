@@ -32,10 +32,10 @@ See the [Astral uv docs](https://docs.astral.sh/uv/) for more installation optio
 
 3. Run what you want using `uv run <script>` command.
 
-   For example to run the animated sprites example:
+   For example to run the render (locally, via Docker) script
 
    ```bash
-   uv run src/animations_sprites/animated_sprites.py
+   uv run render.py
    ```
 
    or directly with Python:
@@ -49,5 +49,5 @@ See the [Astral uv docs](https://docs.astral.sh/uv/) for more installation optio
    source .venv/bin/activate
 
    # Run the script
-   python src/animations_sprites/animated_sprites.py
+   python render.py
    ```

@@ -19,7 +19,7 @@ To extract individual poses from a sprite sheet SVG file, you can use the `extra
 Run the script with the following command:
 
 ```bash
-uv run python extract_poses_from_sprite_svg.py
+uv run extract_poses_from_sprite_svg.py
 ```
 
 and follow the prompts to specify the input SVG file and/or the desired sheets directory.

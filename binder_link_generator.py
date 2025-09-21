@@ -34,6 +34,10 @@ def generate_binder_link(
     """Generate a Binder link for the given Git branch."""
     # fix slash in branch name for URL
     git_branch = git_branch.replace("/", "%2F")
+
+    print(f"\nGenerating Binder link for branch: {git_branch} (allowed slashes are replaced with %2F)")
+    print("If you get some error, please check the branch name and try again.")
+
     return f"https://mybinder.org/v2/gh/{GH_REPO}/{git_branch}?urlpath=lab/tree/{notebook_path}"
 
 

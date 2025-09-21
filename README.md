@@ -56,6 +56,19 @@ See the [Astral uv docs](https://docs.astral.sh/uv/) for more installation optio
 ## How to run the project on the cloud?
 
 So in order to run the project on the cloud it is recommended to use [Binder](https://mybinder.org/).
-You can use the following link to launch the project on Binder:
 
-[![Open in Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sl4shuur/kse-manim-lectures/chore%2Fbinder-manim-setup?urlpath=lab/tree/notebooks/manim_sprites.ipynb)
+You can use the іncluded script `binder_link_generator.py` to generate the link to launch the project on Binder (NO environment setup required!).
+
+```bash
+git clone https://github.com/sl4shuur/kse-manim-lectures
+cd kse-manim-lectures
+python binder_link_generator.py
+```
+
+This will output a link that you can open in your browser to launch the project on Binder.
+
+To see additional info about Binder and how to use Manim with it, see [this guide](https://docs.manim.community/en/stable/installation/jupyter.html).
+
+Also, you can explore the interactive Manim tutorial in Binder:
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/ManimCommunity/jupyter_examples/HEAD?filepath=First%20Steps%20with%20Manim.ipynb)

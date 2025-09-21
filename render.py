@@ -1,10 +1,11 @@
 from src.animations_sprites.manim_sprites import PoseSwitcher, AllSpritesAnimation
+from src.test_scenes.test_ukr_tex import UkrainianTexTest, Indications
 
 if __name__ == "__main__":
     import os
     from pathlib import Path
 
-    class_to_render = AllSpritesAnimation
+    class_to_render = Indications
 
     scene_to_render = class_to_render.__name__
     file_name = class_to_render.__module__.replace(".", "/") + ".py"

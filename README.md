@@ -1,8 +1,9 @@
 # KSE Manim Lectures
 
-## Prerequisites
+## Prerequisites (to use locally)
 
 - **Python** installed on your system.
+- **Docker** installed and running (for rendering scenes on your machine). See [Docker installation guide](https://docs.docker.com/get-docker/).
 - **uv CLI** installed and on your `PATH` (see [Astral uv docs](https://docs.astral.sh/uv/)).
 
 ### How to install uv?
@@ -51,3 +52,10 @@ See the [Astral uv docs](https://docs.astral.sh/uv/) for more installation optio
    # Run the script
    python render.py
    ```
+
+## How to run the project on the cloud?
+
+So in order to run the project on the cloud it is recommended to use [Binder](https://mybinder.org/).
+You can use the following link to launch the project on Binder:
+
+[![Open in Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/sl4shuur/kse-manim-lectures/chore%2Fbinder-manim-setup?urlpath=lab/tree/notebooks/manim_sprites.ipynb)

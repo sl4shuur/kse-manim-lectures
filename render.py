@@ -118,6 +118,28 @@ def _ensure_docker_running() -> bool:
     return _start_docker()
 
 
+def _get_quality_folder(quality: str) -> str:
+    """Map quality flag to output folder name"""
+    quality_mapping = {
+        "ql": "480p15",
+        "qm": "720p30", 
+        "qh": "1080p60",
+        "qp": "1440p60",
+        "qk": "2160p60"
+    }
+    return quality_mapping.get(quality, "480p15")
+
+
+def _build_expected_video_path(module_name: str, class_name: str, quality: str, project_dir: Path) -> Path:
+    """Build expected local video path"""
+    # Extract file name from module (e.g., "animations_lectures.24_1" -> "24_1")
+    file_name = module_name.split(".")[-1]
+    quality_folder = _get_quality_folder(quality)
+    
+    video_path = project_dir / "media" / "videos" / file_name / quality_folder / f"{class_name}.mp4"
+    return video_path
+
+
 def render_scene(scene_name: str, quality: str = "ql"):
     """Render specified scene or default scene"""
 
@@ -163,8 +185,21 @@ def render_scene(scene_name: str, quality: str = "ql"):
     print(f"🐳 Running command: {command}")
 
     try:
-        os.system(command)
-        print("✅ Rendering completed!")
+        exit_code = os.system(command)
+        
+        if exit_code == 0:
+            print("\n✅ Rendering completed!")
+            
+            # Build expected video path and show location
+            expected_path = _build_expected_video_path(module_name, class_name, quality, project_dir)
+            if expected_path.exists():
+                print(f"📹 Video file ready at: {expected_path}")
+            else:
+                print(f"📹 Expected video location: {expected_path}")
+                print("⚠️  Video file not found at expected location.")
+        else:
+            print(f"\n❌ Rendering failed with exit code: {exit_code}")
+            
     except Exception as e:
         print(f"❌ Error during rendering: {e}")
 

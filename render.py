@@ -74,10 +74,10 @@ def _is_docker_running() -> bool:
 def _start_docker() -> bool:
     """Try to start Docker daemon"""
     print("Docker is not running. Attempting to start Docker...")
-    
+
     try:
         # Try to start Docker Desktop on Windows
-        if os.name == 'nt':  # Windows
+        if os.name == "nt":  # Windows
             print("Starting Docker Desktop on Windows...")
             subprocess.run([
                 "powershell", "-Command", 
@@ -87,7 +87,7 @@ def _start_docker() -> bool:
             # For Linux/Mac, try starting docker service
             print("Starting Docker service...")
             subprocess.run(["sudo", "systemctl", "start", "docker"], check=False)
-        
+
         # Wait for Docker to start and check multiple times
         print("Waiting for Docker to start...")
         for i in range(30):  # Wait up to 30 seconds
@@ -97,10 +97,10 @@ def _start_docker() -> bool:
                 return True
             if (i + 1) % 5 == 0:
                 print(f"Still waiting for Docker... ({i+1}/30 seconds)")
-        
+
         print("Docker failed to start within 30 seconds.")
         return False
-        
+
     except Exception as e:
         print(f"Error starting Docker: {e}")
         return False
@@ -109,11 +109,11 @@ def _start_docker() -> bool:
 def _ensure_docker_running() -> bool:
     """Ensure Docker is running, start it if necessary"""
     print("Checking Docker status...")
-    
+
     if _is_docker_running():
         print("Docker is already running!")
         return True
-    
+
     print("Docker is not running.")
     return _start_docker()
 
@@ -122,7 +122,7 @@ def _get_quality_folder(quality: str) -> str:
     """Map quality flag to output folder name"""
     quality_mapping = {
         "ql": "480p15",
-        "qm": "720p30", 
+        "qm": "720p30",
         "qh": "1080p60",
         "qp": "1440p60",
         "qk": "2160p60"
@@ -135,7 +135,7 @@ def _build_expected_video_path(module_name: str, class_name: str, quality: str, 
     # Extract file name from module (e.g., "animations_lectures.24_1" -> "24_1")
     file_name = module_name.split(".")[-1]
     quality_folder = _get_quality_folder(quality)
-    
+
     video_path = project_dir / "media" / "videos" / file_name / quality_folder / f"{class_name}.mp4"
     return video_path
 
@@ -186,10 +186,10 @@ def render_scene(scene_name: str, quality: str = "ql"):
 
     try:
         exit_code = os.system(command)
-        
+
         if exit_code == 0:
             print("\n✅ Rendering completed!")
-            
+
             # Build expected video path and show location
             expected_path = _build_expected_video_path(module_name, class_name, quality, project_dir)
             if expected_path.exists():
@@ -199,7 +199,7 @@ def render_scene(scene_name: str, quality: str = "ql"):
                 print("⚠️  Video file not found at expected location.")
         else:
             print(f"\n❌ Rendering failed with exit code: {exit_code}")
-            
+
     except Exception as e:
         print(f"❌ Error during rendering: {e}")
 

@@ -1,33 +1,62 @@
 from manim import *  # type: ignore
 
+DEBUG_MODE = True
+
 
 class ChatGPTSimulation(Scene):
 
     TEXT_SIZE = 24
-    BOX_OFFSET = 0.5
+    BOX_OFFSET = 0.6
+    ROUNDNESS = 0.3
+    BLUE_E = "#4C97FF"
+    GREEN_E = "#5EDF5E"
 
     def construct(self):
+
+        heading = Text("ChatGPT", font_size=52).to_edge(UL)
+
         messages = [
-            ("Hello, how can I assist you today?", False),
-            ("Can you explain the theory of relativity?", True),
-            ("Certainly! The theory of relativity, developed by Albert Einstein, includes both the special and general theories. Special relativity deals with objects moving at constant speeds, particularly those close to the speed of light, and introduces concepts like time dilation and length contraction. General relativity extends these ideas to include gravity, describing it as the curvature of spacetime caused by mass and energy.", False),
-            ("That's fascinating! How does time dilation work?", True),
-            ("Time dilation occurs when an object is moving at a significant fraction of the speed of light or is in a strong gravitational field. According to special relativity, as an object approaches the speed of light, time appears to slow down for that object relative to a stationary observer. In general relativity, clocks closer to a massive object (like a planet) run slower compared to those further away. This has been confirmed through various experiments, such as observing the decay rates of particles moving at high speeds and using precise atomic clocks on airplanes.", False),
-            ("Thank you for the explanation!", True),
-            ("You're welcome! If you have any more questions about physics or any other topic, feel free to ask.", False),
+            ("Привіт! Що робиш?", True),
+            ("Привіт!\nТа от тригонометрію вивчаю.", False),
+            ("О, цікаво! Синус чи косинус?", True),
+            ("Та я вже в повному тангегсі... :(", False),
         ]
 
-        message = self.get_boxed_message(*messages[0])
-        self.play(FadeIn(message))
+        upper_edge = UP * 3
+        right_edge = RIGHT * 4
+        left_edge = LEFT * 3
+
+        big_question_mark = Text("?", font_size=221, color=RED)
+
+        self.play(Write(heading))
+        self.wait(1)
+
+        boxed_messages: list[VGroup] = []
+        for msg, is_user in messages:
+            boxed_msg = self.get_boxed_message(msg, is_user).align_to(upper_edge, UP)
+            if is_user:
+                boxed_msg.align_to(right_edge, RIGHT)
+            else:
+                boxed_msg.align_to(left_edge, LEFT)
+
+            self.play(FadeIn(boxed_msg, shift=UP*0.5))
+            self.wait(1)
+            upper_edge = boxed_msg.get_bottom() + DOWN * self.BOX_OFFSET
+            boxed_messages.append(boxed_msg)
+
+        # all the messages are changing to half opacity and appearing big question mark
+        msgs_fading_out = [msg.animate(run_time=3).set_opacity(0.1) for msg in boxed_messages] # type: ignore
+        big_question_mark_appear = FadeIn(big_question_mark, scale=0.5, run_time=5)
+        self.play(*msgs_fading_out, big_question_mark_appear)
         self.wait(1)
 
     def get_boxed_message(self, message: str, is_user: bool) -> VGroup:
         """Create a boxed message with an arrow pointing left or right."""
-        text = Text(message, font_size=self.TEXT_SIZE)
+        text = Text(message, font_size=self.TEXT_SIZE, line_spacing=0.5)
         box_color = BLUE_E if is_user else GREEN_E
         box = SurroundingRectangle(
             text,
-            corner_radius=0.1,
+            corner_radius=self.ROUNDNESS,
             color=box_color,
             fill_color=box_color,
             fill_opacity=0.5,

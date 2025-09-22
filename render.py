@@ -76,10 +76,16 @@ def render_scene(scene_name=None):
         print(f"Cannot determine module for scene '{class_name}'")
         return
 
-    file_name = module_name.replace(".", "/") + ".py"
+    # Calculate relative path from project root to the source file
+    project_dir = Path(__file__).resolve().parent
+    source_file_path = SOURCES_DIR / module_name.replace(".", "/")
+    source_file_path = source_file_path.with_suffix(".py")
+
+    # Get relative path from project root
+    file_name = source_file_path.relative_to(project_dir).as_posix()
+
     print(f"Rendering scene: {class_name}")
 
-    project_dir = Path(__file__).resolve().parent
     command = (
         f'docker run -it --rm -v "{project_dir}:/manim" -w /manim '
         f"-e PYTHONPATH=/manim "

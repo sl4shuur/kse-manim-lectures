@@ -8,7 +8,7 @@ from manim import Scene
 from src.utils.config import SOURCES_DIR
 
 
-def _get_all_scenes():
+def _get_all_scenes() -> list[tuple[str, str]]:
     """Get only custom scene classes, excluding built-in Manim classes"""
     scenes = []
 
@@ -46,7 +46,7 @@ def _get_all_scenes():
     return scenes
 
 
-def _find_scene_by_name(scene_name):
+def _find_scene_by_name(scene_name: str) -> tuple[str, str] | tuple[None, None]:
     """Find scene class by name"""
     all_scenes = _get_all_scenes()
     for module_name, class_name in all_scenes:
@@ -55,7 +55,7 @@ def _find_scene_by_name(scene_name):
     return None, None
 
 
-def render_scene(scene_name=None):
+def render_scene(scene_name: str, quality: str = "ql"):
     """Render specified scene or default scene"""
 
     if scene_name:
@@ -84,12 +84,12 @@ def render_scene(scene_name=None):
     # Get relative path from project root
     file_name = source_file_path.relative_to(project_dir).as_posix()
 
-    print(f"Rendering scene: {class_name}")
+    print(f"Rendering scene: {class_name} with quality: {quality}")
 
     command = (
         f'docker run -it --rm -v "{project_dir}:/manim" -w /manim '
         f"-e PYTHONPATH=/manim "
-        f"manimcommunity/manim manim {file_name} {class_name} -ql"
+        f"manimcommunity/manim manim {file_name} {class_name} -{quality}"
     )
     print(f"Running command: {command}")
 
@@ -100,8 +100,31 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Render Manim scenes")
     parser.add_argument("scene", nargs="?", help="Scene class name to render")
     parser.add_argument(
+        "-ql", "--quality-low", action="store_const", const="ql", dest="quality",
+        help="Render in low quality (854x480p15FPS)"
+    )
+    parser.add_argument(
+        "-qm", "--quality-medium", action="store_const", const="qm", dest="quality",
+        help="Render in medium quality (1280x720p30FPS)"
+    )
+    parser.add_argument(
+        "-qh", "--quality-high", action="store_const", const="qh", dest="quality",
+        help="Render in high quality (1920x1080p60FPS)"
+    )
+    parser.add_argument(
+        "-qp", "--quality-production", action="store_const", const="qp", dest="quality",
+        help="Render in production 2K quality (2560x1440p60FPS)"
+    )
+    parser.add_argument(
+        "-qk", "--quality-4k", action="store_const", const="qk", dest="quality",
+        help="Render in 4K quality (3840x2160p60FPS)"
+    )
+    parser.add_argument(
         "--list", "-l", action="store_true", help="List all available scenes"
     )
+
+    # Set default quality if none specified
+    parser.set_defaults(quality="ql")
 
     args = parser.parse_args()
 
@@ -111,7 +134,7 @@ if __name__ == "__main__":
         for module_name, class_name in all_scenes:
             print(f"  {class_name} (from {module_name})")
     elif args.scene:
-        render_scene(args.scene)
+        render_scene(args.scene, args.quality)
     else:
         # Show available scenes if no arguments
         all_scenes = _get_all_scenes()
@@ -119,6 +142,12 @@ if __name__ == "__main__":
         for module_name, class_name in all_scenes:
             print(f"  {class_name}")
         print("\nUsage:")
-        print("  python render.py <scene_name>    # Render specific scene")
-        print("  python render.py --list          # List all scenes")
-        print("  python render.py                 # Show this help")
+        print("  python render.py <scene_name> [-ql|-qm|-qh|-qp|-qk]  # Render scene with quality (default: -ql, low)")
+        print("  python render.py --list                              # List all scenes")
+        print("  python render.py                                     # Show this help")
+        print("\nQuality options:")
+        print("  -ql, --quality-low         Low quality (854x480p15FPS)")
+        print("  -qm, --quality-medium      Medium quality (1280x720p30FPS)")
+        print("  -qh, --quality-high        High quality (1920x1080p60FPS)")
+        print("  -qp, --quality-production  Production 2K quality (2560x1440p60FPS)")
+        print("  -qk, --quality-4k          4K quality (3840x2160p60FPS)")

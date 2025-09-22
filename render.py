@@ -2,6 +2,8 @@ import os
 import sys
 import inspect
 import argparse
+import subprocess
+import time
 from pathlib import Path
 from manim import Scene
 
@@ -55,8 +57,75 @@ def _find_scene_by_name(scene_name: str) -> tuple[str, str] | tuple[None, None]:
     return None, None
 
 
+def _is_docker_running() -> bool:
+    """Check if Docker daemon is running"""
+    try:
+        result = subprocess.run(
+            ["docker", "info"], 
+            capture_output=True, 
+            text=True, 
+            timeout=10
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+
+def _start_docker() -> bool:
+    """Try to start Docker daemon"""
+    print("Docker is not running. Attempting to start Docker...")
+    
+    try:
+        # Try to start Docker Desktop on Windows
+        if os.name == 'nt':  # Windows
+            print("Starting Docker Desktop on Windows...")
+            subprocess.run([
+                "powershell", "-Command", 
+                "Start-Process", "'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe'"
+            ], check=False)
+        else:
+            # For Linux/Mac, try starting docker service
+            print("Starting Docker service...")
+            subprocess.run(["sudo", "systemctl", "start", "docker"], check=False)
+        
+        # Wait for Docker to start and check multiple times
+        print("Waiting for Docker to start...")
+        for i in range(30):  # Wait up to 30 seconds
+            time.sleep(1)
+            if _is_docker_running():
+                print(f"Docker started successfully after {i+1} seconds!")
+                return True
+            if (i + 1) % 5 == 0:
+                print(f"Still waiting for Docker... ({i+1}/30 seconds)")
+        
+        print("Docker failed to start within 30 seconds.")
+        return False
+        
+    except Exception as e:
+        print(f"Error starting Docker: {e}")
+        return False
+
+
+def _ensure_docker_running() -> bool:
+    """Ensure Docker is running, start it if necessary"""
+    print("Checking Docker status...")
+    
+    if _is_docker_running():
+        print("Docker is already running!")
+        return True
+    
+    print("Docker is not running.")
+    return _start_docker()
+
+
 def render_scene(scene_name: str, quality: str = "ql"):
     """Render specified scene or default scene"""
+
+    # Ensure Docker is running
+    if not _ensure_docker_running():
+        print("❌ Cannot proceed without Docker running.")
+        print("Please start Docker manually and try again.")
+        return
 
     if scene_name:
         module_name, class_name = _find_scene_by_name(scene_name)
@@ -84,16 +153,20 @@ def render_scene(scene_name: str, quality: str = "ql"):
     # Get relative path from project root
     file_name = source_file_path.relative_to(project_dir).as_posix()
 
-    print(f"Rendering scene: {class_name} with quality: {quality}")
+    print(f"\n🎬 Rendering scene: {class_name} with quality: {quality}")
 
     command = (
         f'docker run -it --rm -v "{project_dir}:/manim" -w /manim '
         f"-e PYTHONPATH=/manim "
         f"manimcommunity/manim manim {file_name} {class_name} -{quality}"
     )
-    print(f"Running command: {command}")
+    print(f"🐳 Running command: {command}")
 
-    os.system(command)
+    try:
+        os.system(command)
+        print("✅ Rendering completed!")
+    except Exception as e:
+        print(f"❌ Error during rendering: {e}")
 
 
 if __name__ == "__main__":

@@ -1,121 +1,10 @@
 import os
-import sys
-import inspect
 import argparse
-import subprocess
-import time
 from pathlib import Path
-from manim import Scene
 
 from src.utils.config import SOURCES_DIR
-
-
-def _get_all_scenes() -> list[tuple[str, str]]:
-    """Get only custom scene classes, excluding built-in Manim classes"""
-    scenes = []
-
-    # List of built-in Manim scene classes to exclude
-    builtin_scenes = {
-        "LinearTransformationScene",
-        "MovingCameraScene",
-        "SpecialThreeDScene",
-        "ThreeDScene",
-        "VectorScene",
-        "ZoomedScene",
-        "Scene",
-    }
-
-    sys.path.append(str(SOURCES_DIR))
-    for root, _, files in os.walk(SOURCES_DIR):
-        for file in files:
-            if file.endswith(".py"):
-                module_path = Path(root) / file
-                relative_module = module_path.relative_to(SOURCES_DIR).with_suffix("")
-                module_name = ".".join(relative_module.parts)
-                try:
-                    module = __import__(module_name, fromlist=["*"])
-                    for name, obj in inspect.getmembers(module, inspect.isclass):
-                        # Check if it's a Scene subclass but not a built-in one
-                        if (
-                            issubclass(obj, Scene)
-                            and obj is not Scene
-                            and name not in builtin_scenes
-                            and obj.__module__ == module_name
-                        ):  # Only classes defined in this module
-                            scenes.append((module_name, name))
-                except Exception as e:
-                    print(f"Error importing {module_name}: {e}")
-    return scenes
-
-
-def _find_scene_by_name(scene_name: str) -> tuple[str, str] | tuple[None, None]:
-    """Find scene class by name"""
-    all_scenes = _get_all_scenes()
-    for module_name, class_name in all_scenes:
-        if class_name == scene_name:
-            return module_name, class_name
-    return None, None
-
-
-def _is_docker_running() -> bool:
-    """Check if Docker daemon is running"""
-    try:
-        result = subprocess.run(
-            ["docker", "info"], 
-            capture_output=True, 
-            text=True, 
-            timeout=10
-        )
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        return False
-
-
-def _start_docker() -> bool:
-    """Try to start Docker daemon"""
-    print("Docker is not running. Attempting to start Docker...")
-
-    try:
-        # Try to start Docker Desktop on Windows
-        if os.name == "nt":  # Windows
-            print("Starting Docker Desktop on Windows...")
-            subprocess.run([
-                "powershell", "-Command", 
-                "Start-Process", "'C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe'"
-            ], check=False)
-        else:
-            # For Linux/Mac, try starting docker service
-            print("Starting Docker service...")
-            subprocess.run(["sudo", "systemctl", "start", "docker"], check=False)
-
-        # Wait for Docker to start and check multiple times
-        print("Waiting for Docker to start...")
-        for i in range(30):  # Wait up to 30 seconds
-            time.sleep(1)
-            if _is_docker_running():
-                print(f"Docker started successfully after {i+1} seconds!")
-                return True
-            if (i + 1) % 5 == 0:
-                print(f"Still waiting for Docker... ({i+1}/30 seconds)")
-
-        print("Docker failed to start within 30 seconds.")
-        return False
-
-    except Exception as e:
-        print(f"Error starting Docker: {e}")
-        return False
-
-
-def _ensure_docker_running() -> bool:
-    """Ensure Docker is running, start it if necessary"""
-    print("Checking Docker status...")
-
-    if _is_docker_running():
-        print("Docker is already running!")
-        return True
-
-    print("Docker is not running.")
-    return _start_docker()
+from src.utils.docker_manager import ensure_docker_running
+from src.utils.manim_scenes_finder import get_all_scenes, find_scene_by_name
 
 
 def _get_quality_folder(quality: str) -> str:
@@ -144,17 +33,17 @@ def render_scene(scene_name: str, quality: str = "ql"):
     """Render specified scene or default scene"""
 
     # Ensure Docker is running
-    if not _ensure_docker_running():
+    if not ensure_docker_running():
         print("❌ Cannot proceed without Docker running.")
         print("Please start Docker manually and try again.")
         return
 
     if scene_name:
-        module_name, class_name = _find_scene_by_name(scene_name)
+        module_name, class_name = find_scene_by_name(scene_name)
         if not class_name:
             print(f"Scene '{scene_name}' not found!")
             print("Available scenes:")
-            all_scenes = _get_all_scenes()
+            all_scenes = get_all_scenes()
             for mod_name, cls_name in all_scenes:
                 print(f"  {cls_name}")
             return
@@ -237,7 +126,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.list:
-        all_scenes = _get_all_scenes()
+        all_scenes = get_all_scenes()
         print("Available custom scenes:")
         for module_name, class_name in all_scenes:
             print(f"  {class_name} (from {module_name})")
@@ -245,7 +134,7 @@ if __name__ == "__main__":
         render_scene(args.scene, args.quality)
     else:
         # Show available scenes if no arguments
-        all_scenes = _get_all_scenes()
+        all_scenes = get_all_scenes()
         print("Available custom scenes:")
         for module_name, class_name in all_scenes:
             print(f"  {class_name}")

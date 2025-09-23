@@ -1,4 +1,5 @@
 from manim import *  # type: ignore
+from src.utils.manim_config import turn_debug_mode_on
 
 DEBUG_MODE = True
 
@@ -18,6 +19,9 @@ class ChatGPTSimulation(Scene):
     heading = Text("ChatGPT", font_size=52).to_edge(UL)
 
     def construct(self):
+
+        if DEBUG_MODE:
+            turn_debug_mode_on(scene=self, opacity=0.5)
 
         messages = self._get_messages()
         boxed_messages = self.get_boxed_messages(messages)

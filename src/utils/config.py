@@ -30,3 +30,16 @@ POSE_PREFIX = "pose_"
 
 # List of good poses for the character
 POSES_NUM_LIST = ["01", "08", "09", "12", "13", "14", "15", "16", "19", "24"]
+
+# Common virtual environment folder names
+# please keep this list updated if you use a different name
+# or use just .venv or venv (the most common ones)
+VENV_NAMES = [
+    ".venv",
+    "venv",
+    "env",
+    "virtualenv",
+    ".virtualenv",
+    "manim_venv",
+    ".manim_venv",
+]

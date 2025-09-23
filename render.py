@@ -2,8 +2,20 @@ import os
 import argparse
 from pathlib import Path
 
+from src.utils.env_manager import ensure_venv_active
 from src.utils.config import SOURCES_DIR
 from src.utils.docker_manager import ensure_docker_running
+
+# Ensure virtual environment is active
+if not ensure_venv_active():
+    print("❌ Cannot proceed without an active virtual environment.")
+    print("Please check the README file to set up the environment.")
+    print("Run the following commands manually:")
+    print("  uv sync")
+    print("  .venv\\Scripts\\activate  # Windows")
+    print("  source .venv/bin/activate  # Linux/Mac")
+    raise SystemExit(1)
+
 from src.utils.manim_scenes_finder import get_all_scenes, find_scene_by_name
 
 

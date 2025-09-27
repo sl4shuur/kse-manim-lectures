@@ -1,6 +1,5 @@
 import os
 import sys
-import subprocess
 from pathlib import Path
 
 from src.utils.config import BASE_DIR, VENV_NAMES
@@ -71,47 +70,13 @@ def _activate_venv(venv_path: Path) -> bool:
         return False
 
 
-def _install_requirements(venv_path: Path) -> bool:
-    """Install requirements if requirements.txt exists"""
-
-    requirements_file = BASE_DIR / "requirements.txt"
-
-    if not requirements_file.exists():
-        print("No requirements.txt found, skipping package installation.")
-        return True
-
-    try:
-        if os.name == "nt":  # Windows
-            pip_exe = venv_path / "Scripts" / "pip.exe"
-        else:  # Linux/Mac
-            pip_exe = venv_path / "bin" / "pip"
-
-        print("Installing requirements...")
-        subprocess.run(
-            [str(pip_exe), "install", "-r", str(requirements_file)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
-        print("Requirements installed successfully!")
-        return True
-
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to install requirements: {e}")
-        return False
-    except Exception as e:
-        print(f"Error installing requirements: {e}")
-        return False
-
-
 def ensure_venv_active() -> bool:
     """Ensure virtual environment is active"""
     print("Checking virtual environment status...")
 
     # Check if already in virtual environment
     if _is_venv_active():
-        print("Virtual environment is already active!")
+        print("Virtual environment is already active!\n")
         return True
 
     print("Virtual environment is not active.")
@@ -123,5 +88,5 @@ def ensure_venv_active() -> bool:
         print(f"Found virtual environment at: {venv_path}")
         return _activate_venv(venv_path)
     else:
-        print("No virtual environment found.")
+        print("No virtual environment found.\n")
         return False

@@ -8,6 +8,7 @@ SOURCES_DIR = BASE_DIR / "src"
 ASSETS_DIR = BASE_DIR / "assets"
 SPRITES_SHEETS_DIR = ASSETS_DIR / "sprites_sheets"
 SPRITES_POSES_DIR = ASSETS_DIR / "sprites_poses"
+LOGOS_DIR = ASSETS_DIR / "logos"
 
 SPRITE_ANIMATIONS_DIR = SOURCES_DIR / "animations_sprites"
 LECTURE_ANIMATIONS_DIR = SOURCES_DIR / "animations_lectures"
@@ -18,6 +19,7 @@ for directory in [
     ASSETS_DIR,
     SPRITES_SHEETS_DIR,
     SPRITES_POSES_DIR,
+    LOGOS_DIR,
     SPRITE_ANIMATIONS_DIR,
     LECTURE_ANIMATIONS_DIR,
     NOTEBOOKS_DIR,

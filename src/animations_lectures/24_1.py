@@ -1,7 +1,92 @@
 from manim import *  # type: ignore
 from src.utils.manim_config import turn_debug_mode_on
+from src.utils.config import LOGOS_DIR
 
 DEBUG_MODE = True
+
+
+class LogosIntro(Scene):
+
+    OFFSET = 0.5
+
+    def construct(self):
+        if DEBUG_MODE:
+            turn_debug_mode_on(scene=self, opacity=0.5)
+
+        logos = self.get_logos()
+
+        self.animate_logos(logos, is_skipped=False)
+        self.wait()
+
+    def get_logos(self) -> dict[str, SVGMobject]:
+        logos = dict()
+        logos["chatgpt"] = SVGMobject(LOGOS_DIR / "chatgpt.svg").set_color(WHITE)
+        logos["claude"] = SVGMobject(LOGOS_DIR / "claude.svg")
+        # gradient colors for the logo
+        logos["gemini"] = SVGMobject(LOGOS_DIR / "gemini.svg").set_fill(
+            color=["#00BCD4", "#2196F3", "#3F51B5", "#673AB7"],  # type: ignore
+            opacity=1,
+        )
+        logos["deepseek"] = SVGMobject(LOGOS_DIR / "deepseek.svg")
+        logos["grok"] = SVGMobject(LOGOS_DIR / "grok.svg").set_color(WHITE)
+        return logos
+
+    def animate_logos(self, logos: dict[str, SVGMobject], is_skipped: bool = True):
+
+        intro_anim = DrawBorderThenFill(logos["chatgpt"])
+
+        change_one_anim = AnimationGroup(
+            FadeOut(logos["chatgpt"], scale=1.5),
+            FadeIn(logos["claude"], scale=0.5),
+        )
+        change_two_anim = AnimationGroup(
+            FadeOut(logos["claude"], scale=1.5),
+            FadeIn(logos["gemini"], scale=0.5),
+        )
+        change_three_anim = AnimationGroup(
+            FadeOut(logos["gemini"], scale=1.5),
+            FadeIn(logos["grok"], scale=0.5),
+        )
+        change_four_anim = AnimationGroup(
+            FadeOut(logos["grok"], scale=1.5),
+            FadeIn(logos["deepseek"], scale=0.5),
+        )
+
+        logos["deepseek"].set_z_index(2)  # make sure deepseek is on top
+
+        claude_copy = (
+            logos["claude"].copy().next_to(logos["deepseek"], LEFT, buff=self.OFFSET)
+        )
+        gpt_copy = logos["chatgpt"].copy().next_to(claude_copy, LEFT, buff=self.OFFSET)
+        gemini_copy = (
+            logos["gemini"].copy().next_to(logos["deepseek"], RIGHT, buff=self.OFFSET)
+        )
+        grok_copy = logos["grok"].copy().next_to(gemini_copy, RIGHT, buff=self.OFFSET)
+
+        move_gpt_anim = logos["chatgpt"].animate.move_to(gpt_copy)
+        move_claude_anim = logos["claude"].animate.move_to(claude_copy)
+        move_gemini_anim = logos["gemini"].animate.move_to(gemini_copy)
+        logos["grok"].set_width(grok_copy.width * 0.7)
+        move_grok_anim = logos["grok"].animate.move_to(grok_copy).set_width(grok_copy.width)
+
+        if is_skipped:
+            self.add(logos["claude"])
+            return
+
+        self.play(intro_anim)
+        self.wait()
+
+        self.play(change_one_anim)
+        self.wait()
+        self.play(change_two_anim)
+        self.wait()
+        self.play(change_three_anim)
+        self.wait()
+        self.play(change_four_anim)
+        self.wait(2)
+
+        self.play(move_gpt_anim, move_claude_anim, move_gemini_anim, move_grok_anim)
+        self.wait()
 
 
 class ChatGPTSimulation(Scene):

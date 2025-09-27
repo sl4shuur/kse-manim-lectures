@@ -31,14 +31,15 @@ def _get_quality_folder(quality: str) -> str:
     return quality_mapping.get(quality, "480p15")
 
 
-def _build_expected_video_path(module_name: str, class_name: str, quality: str, project_dir: Path) -> Path:
+def _build_expected_video_path(module_name: str, class_name: str, quality: str) -> tuple[Path, Path]:
     """Build expected local video path"""
     # Extract file name from module (e.g., "animations_lectures.24_1" -> "24_1")
     file_name = module_name.split(".")[-1]
     quality_folder = _get_quality_folder(quality)
-
-    video_path = project_dir / "media" / "videos" / file_name / quality_folder / f"{class_name}.mp4"
-    return video_path
+    media_dir = Path("media")
+    video_path = media_dir / "videos" / file_name / quality_folder / f"{class_name}.mp4"
+    image_path = media_dir / "images" / file_name / f"{class_name}_ManimCE_v0.19.0.png"
+    return video_path, image_path
 
 
 def render_scene(scene_name: str, quality: str = "ql"):
@@ -56,7 +57,7 @@ def render_scene(scene_name: str, quality: str = "ql"):
             print(f"Scene '{scene_name}' not found!")
             print("Available scenes:")
             all_scenes = get_all_scenes()
-            for mod_name, cls_name in all_scenes:
+            for _, cls_name in all_scenes:
                 print(f"  {cls_name}")
             return
     else:
@@ -92,12 +93,16 @@ def render_scene(scene_name: str, quality: str = "ql"):
             print("\n✅ Rendering completed!")
 
             # Build expected video path and show location
-            expected_path = _build_expected_video_path(module_name, class_name, quality, project_dir)
+            expected_path, image_path = _build_expected_video_path(module_name, class_name, quality)
             if expected_path.exists():
                 print(f"📹 Video file ready at: {expected_path}")
             else:
-                print(f"📹 Expected video location: {expected_path}")
                 print("⚠️  Video file not found at expected location.")
+
+            if image_path.exists():
+                print(f"🖼️ Image file ready at: {image_path}")
+            else:
+                print("⚠️  Image file not found at expected location.")
         else:
             print(f"\n❌ Rendering failed with exit code: {exit_code}")
 

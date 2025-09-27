@@ -1,5 +1,7 @@
 from pathlib import Path
 
+IS_DEBUG_MODE_ON = True
+
 # Base of the project
 BASE_DIR = Path(__file__).parent.parent.parent
 SOURCES_DIR = BASE_DIR / "src"

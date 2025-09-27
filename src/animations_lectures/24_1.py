@@ -1,8 +1,6 @@
 from manim import *  # type: ignore
 from src.utils.manim_config import turn_debug_mode_on
-from src.utils.config import LOGOS_DIR
-
-DEBUG_MODE = True
+from src.utils.config import LOGOS_DIR, IS_DEBUG_MODE_ON
 
 
 class LogosIntro(Scene):
@@ -10,7 +8,7 @@ class LogosIntro(Scene):
     OFFSET = 0.5
 
     def construct(self):
-        if DEBUG_MODE:
+        if IS_DEBUG_MODE_ON:
             turn_debug_mode_on(scene=self, opacity=0.5)
 
         logos = self.get_logos()
@@ -105,7 +103,7 @@ class ChatGPTSimulation(Scene):
 
     def construct(self):
 
-        if DEBUG_MODE:
+        if IS_DEBUG_MODE_ON:
             turn_debug_mode_on(scene=self, opacity=0.5)
 
         messages = self._get_messages()
@@ -115,12 +113,12 @@ class ChatGPTSimulation(Scene):
         self.wait(1)
 
         # Animate the boxed messages to appear one by one
-        self.animate_boxed_messages(boxed_messages, is_skipped=DEBUG_MODE)
+        self.animate_boxed_messages(boxed_messages, is_skipped=IS_DEBUG_MODE_ON)
         self.wait(1)
 
         # all the messages are changing to half opacity and appearing big question mark
         self.animate_fade_all_messages(
-            boxed_messages, opacity=0.1, is_skipped=DEBUG_MODE
+            boxed_messages, opacity=0.1, is_skipped=IS_DEBUG_MODE_ON
         )
         self.wait(1)
 
@@ -191,3 +189,110 @@ class ChatGPTSimulation(Scene):
             self.add(self.big_question_mark)
         else:
             self.play(*msgs_fading_out, big_question_mark_appear)
+
+
+class CosineSimilarity(Scene):
+    def construct(self):
+        if IS_DEBUG_MODE_ON:
+            turn_debug_mode_on(scene=self, opacity=0.5)
+
+        axes = self.get_axes()
+        self.play(DrawBorderThenFill(axes))
+        self.wait()
+
+        vectors = self.get_vectors(
+            labels=["собачка", "кицюня", "добрий", "злий"],
+            label_size=33,
+            label_buff=0.15,
+        )
+
+        self.animate_vectors(vectors, is_skipped=False)
+
+        eng_title = Text("Cosine Similarity", font_size=44).to_edge(LEFT).shift(DOWN)
+        ukr_title = Text("косинусна подібність", font_size=28).next_to(
+            eng_title, DOWN, buff=0.2, aligned_edge=LEFT
+        )
+
+        self.play(
+            Succession(
+                Write(eng_title),
+                Write(ukr_title),
+                lag_ratio=1,
+            )
+        )
+
+        self.wait()
+
+    def get_axes(self, x_length: int = 8, y_length: int = 6) -> Axes:
+        step = 1
+        x_max = x_length / 2
+        y_max = y_length / 2
+        axes = Axes(
+            x_range=[-x_max, x_max, step],
+            y_range=[-y_max, y_max, step],
+            x_length=x_length,
+            y_length=y_length,
+            axis_config={"tip_shape": StealthTip},
+        )
+
+        x_label = MathTex("x").next_to(axes.x_axis.get_end(), DR)
+        y_label = MathTex("y").next_to(axes.y_axis.get_end(), UL)
+        axes.add(x_label, y_label)
+
+        return axes
+
+    def get_vectors(
+        self, labels: list[str], label_size: int, label_buff: float
+    ) -> list[VGroup]:
+        vectors = []
+        colors = [YELLOW, PINK, BLUE, RED]
+
+        # first two vectors are close
+        coord1 = np.array([2, 1])
+        coord2 = np.array([1.8, 1.2])
+
+        # 3rd is orthogonal to the first two
+        coord3 = np.array([-1.1, 1.9])
+
+        # 4th is opposite to the third
+        coord4 = coord3 * -1
+
+        labels_dirs = [DR, UP, UL, DR]
+
+        # create the vectors
+
+        for i, coord in enumerate([coord1, coord2, coord3, coord4]):
+            coord = np.append(coord, 0)  # make it 3D
+            vec = VGroup(
+                Arrow(
+                    start=ORIGIN,
+                    end=coord,
+                    buff=0,
+                    max_tip_length_to_length_ratio=0.1,
+                    stroke_width=6,
+                    color=colors[i],
+                ),
+                Text(labels[i], font_size=label_size, color=colors[i]).next_to(
+                    coord, labels_dirs[i], buff=label_buff
+                ),
+            )
+            vectors.append(vec)
+
+        return vectors
+
+    def animate_vectors(self, vectors: list[VGroup], is_skipped: bool = True):
+
+        grow_fade_in = lambda vec: LaggedStart(
+            GrowArrow(vec[0]), FadeIn(vec[1], scale=0.7), run_time=2, lag_ratio=0.85
+        )
+        animation = Succession(
+            *[grow_fade_in(vec) for vec in vectors],
+            lag_ratio=1,
+        )
+
+        if is_skipped:
+            self.add(*vectors)
+        else:
+            self.play(animation)
+
+        self.wait()

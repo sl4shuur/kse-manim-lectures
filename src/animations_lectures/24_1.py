@@ -1,6 +1,7 @@
 from manim import *  # type: ignore
-from src.utils.manim_config import turn_debug_mode_on
+from src.utils.manim_config import turn_debug_mode_on, UkrainianTexTemplate
 from src.utils.config import LOGOS_DIR, IS_DEBUG_MODE_ON
+import numpy as np
 
 
 class LogosIntro(Scene):
@@ -65,7 +66,9 @@ class LogosIntro(Scene):
         move_claude_anim = logos["claude"].animate.move_to(claude_copy)
         move_gemini_anim = logos["gemini"].animate.move_to(gemini_copy)
         logos["grok"].set_width(grok_copy.width * 0.7)
-        move_grok_anim = logos["grok"].animate.move_to(grok_copy).set_width(grok_copy.width)
+        move_grok_anim = (
+            logos["grok"].animate.move_to(grok_copy).set_width(grok_copy.width)
+        )
 
         if is_skipped:
             self.add(logos["claude"])
@@ -296,3 +299,277 @@ class CosineSimilarity(Scene):
             self.play(animation)
 
         self.wait()
+
+
+class IntroToTrigonometry(Scene):
+
+    colors = [BLUE, RED, GREEN]
+    edge_labels = ["прилеглий", "протилежний", "гіпотенуза"]
+
+    a = ORIGIN
+    b = RIGHT * 3
+    c = b + UP * 4
+
+    def construct(self):
+        if IS_DEBUG_MODE_ON:
+            self.debug_plane = turn_debug_mode_on(scene=self, opacity=0.5)
+
+        self.triangle = self.create_triangle(self.a, self.b, self.c, stroke_width=6)
+        triangle = self.triangle
+        triangle.shift(LEFT * 4 + DOWN * 1.5)
+        self.animate_triangle(triangle, is_skipped=IS_DEBUG_MODE_ON)
+
+        self.animate_alpha_label(triangle, alpha_label_size=69, is_skipped=IS_DEBUG_MODE_ON)
+
+        self.animate_sides_labels(triangle, text_size=33, is_skipped=IS_DEBUG_MODE_ON)
+
+        self.animate_sincos_formulas(is_skipped=IS_DEBUG_MODE_ON)
+
+        els_to_leave = [self.debug_plane, self.triangle] if IS_DEBUG_MODE_ON else [self.triangle]
+
+        self.animate_remove_all_elements(els_to_leave=els_to_leave, is_skipped=False)  # type: ignore
+
+        self.wait()
+
+    def create_triangle(
+        self, a: np.ndarray, b: np.ndarray, c: np.ndarray, stroke_width: int
+    ) -> VGroup:
+        line1 = Line(a, b, color=WHITE, stroke_width=stroke_width)
+        line2 = Line(b, c, color=WHITE, stroke_width=stroke_width)
+        line3 = Line(c, a, color=WHITE, stroke_width=stroke_width)
+
+        adj_right_angle = RightAngle(line1, line2, length=0.5, color=WHITE, quadrant=(-1, 1))  # type: ignore
+
+        triangle = VGroup(line1, line2, line3, adj_right_angle)
+        return triangle
+
+    def animate_triangle(self, triangle: VGroup, is_skipped: bool = True):
+        right_angle = triangle[3]
+
+        if is_skipped:
+            self.add(triangle)
+        else:
+            self.play(
+                LaggedStart(
+                    AnimationGroup(*[Create(line) for line in triangle[:3]]),  # type: ignore
+                    Create(right_angle),  # type: ignore
+                    lag_ratio=1,
+                )
+            )
+        self.wait()
+
+    def animate_alpha_label(
+        self,
+        triangle: VGroup,
+        alpha_label_size: int = 48,
+        buff: float = 0.4,
+        is_skipped: bool = True,
+    ):
+        line1 = triangle[0]
+        line2 = triangle[1]
+        line3 = triangle[2]
+
+        angle = Angle(line1, line3, radius=1, color=WHITE, quadrant=(1, -1))  # type: ignore
+        alpha = MathTex(r"\alpha", font_size=alpha_label_size, color=WHITE)
+        
+        arc_center = line1.get_start()
+        p = line2.point_from_proportion(0.35)
+        direction = p - arc_center
+        direction /= np.linalg.norm(direction)
+
+        alpha.move_to(arc_center + direction * (angle.radius + buff))
+
+        if is_skipped:
+            self.add(alpha, angle)
+        else:
+            self.play(LaggedStart(Create(angle), Write(alpha), lag_ratio=1))
+
+        triangle.add(angle, alpha)
+        self.wait()
+
+    def animate_sides_labels(self, triangle: VGroup, text_size: int = 36, is_skipped: bool = True):
+        close_cathetus = triangle[0]
+        far_cathetus = triangle[1]
+        hypotenuse = triangle[2]
+
+        text_close, text_far, text_hyp = [
+            Text(text, font_size=text_size, color=color)
+            for text, color in zip(self.edge_labels, self.colors)
+        ]
+
+        text_close.next_to(close_cathetus.get_center(), DOWN, buff=0.2)
+
+        # rotate the far cathetus and hypotenuse labels to match the line angle
+        angle_far = angle_of_vector(far_cathetus.get_vector())
+        text_far.rotate(angle_far).next_to(far_cathetus.get_center(), RIGHT, buff=0.2)
+
+        # get normal vector-direction for the hypotenuse label
+        angle_hyp = angle_of_vector(hypotenuse.get_vector())
+        normal_hyp = angle_hyp - PI / 2
+        normal_vec = np.array([np.cos(normal_hyp), np.sin(normal_hyp), 0])
+        normal_vec /= np.linalg.norm(normal_vec)
+
+        # make sure the angle is within -PI/2 to PI/2 range
+        if abs(angle_hyp) > PI/2:
+            angle_hyp += PI
+
+        text_hyp.rotate(angle_hyp).move_to(hypotenuse.point_from_proportion(0.45) + normal_vec * 0.33)
+
+        if is_skipped:
+            [edge.set_color(color) for edge, color in zip(triangle[:3], self.colors)]
+            self.add(text_close, text_far, text_hyp)
+            return
+        
+        else:
+            anims = [LaggedStart(
+                edge.animate.set_color(color),  # type: ignore
+                Write(text),
+                lag_ratio=1,
+            ) for edge, color, text in zip(triangle[:3], self.colors, [text_close, text_far, text_hyp])]
+            self.play(Succession(*anims, lag_ratio=1))
+        self.wait()
+
+    def animate_sincos_formulas(self, text_size = DEFAULT_FONT_SIZE, is_skipped: bool = True):
+
+        sin_formula = Tex(r"$\sin(\alpha) = \frac{\text{протилежний}}{\text{гіпотенуза}}$", font_size=text_size, tex_template=UkrainianTexTemplate)
+        cos_formula = Tex(r"$\cos(\alpha) = \frac{\text{прилеглий}}{\text{гіпотенуза}}$", font_size=text_size, tex_template=UkrainianTexTemplate)
+
+        sin_formula.to_edge(UR, buff=1).shift(LEFT)
+        cos_formula.next_to(sin_formula, DOWN, buff=0.5).align_to(sin_formula, LEFT)
+        # show index for the fraction
+        # https://docs.manim.community/en/stable/reference/manim.utils.debug.html
+        sin_indices = index_labels(sin_formula[0])
+        cos_indices = index_labels(cos_formula[0])
+
+        # color everything in black first (dumb approach, but works)
+
+        sin_formula[0][7:].set_color(BLACK)
+        cos_formula[0][7:].set_color(BLACK)
+
+        if is_skipped:
+            # color the text in the formula by indices
+            sin_formula[0][18].set_color(WHITE)  # frac line
+            sin_formula[0][7:18].set_color(self.colors[1])  # протилежний
+            sin_formula[0][19:].set_color(self.colors[2])  # гіпотенуза
+
+            cos_formula[0][16].set_color(WHITE)  # frac line
+            cos_formula[0][7:16].set_color(self.colors[0])  # прилеглий
+            cos_formula[0][17:].set_color(self.colors[2])  # гіпотенуза
+            self.add(sin_formula, sin_indices, cos_formula, cos_indices)
+        else:
+            # step by step animation
+            # 1. write sin formula
+            self.play(Write(sin_formula))
+            self.wait()
+            # 2. appear frac line
+            self.play(sin_formula[0][18].animate.set_color(WHITE))
+            self.wait()
+            # 3. color the text in the formula by indices
+            self.play(sin_formula[0][7:18].animate.set_color(self.colors[1]))  # протилежний
+            self.wait()
+            self.play(sin_formula[0][19:].animate.set_color(self.colors[2]))  # гіпотенуза
+            self.wait(2)
+            # 4. do the same for cos formula
+            self.play(Write(cos_formula))
+            self.wait()
+            self.play(cos_formula[0][16].animate.set_color(WHITE))
+            self.wait()
+            self.play(cos_formula[0][7:16].animate.set_color(self.colors[0]))  # прилеглий
+            self.wait()
+            self.play(cos_formula[0][17:].animate.set_color(self.colors[2]))  # гіпотенуза
+        self.wait()
+
+        self.animate_cossin_hack(cos_formula=cos_formula, sin_formula=sin_formula, text_size=text_size+10, is_skipped=is_skipped)
+
+        self.wait()
+
+    def animate_cossin_hack(self, cos_formula: Tex, sin_formula: Tex, buff: float = 1.3, text_size = DEFAULT_FONT_SIZE, is_skipped: bool = True):
+        cos_text = MathTex(r"\cos", font_size=text_size)
+        cos_text.next_to(cos_formula, DOWN, buff=buff, aligned_edge=LEFT)
+
+        sin_text = MathTex(r"\sin", font_size=text_size)
+        sin_text.next_to(cos_text, RIGHT, buff=0.5, aligned_edge=DOWN)
+
+        cossin_before = VGroup(cos_text, sin_text)
+        cossin_after = MathTex(r"\text{cossin}", font_size=text_size).move_to(cossin_before)
+        cosin_text = MathTex(r"\text{cosin}", font_size=text_size).move_to(cossin_after)
+
+        # color letter s in yellow
+        cosin_text[0][2].set_color(YELLOW)
+
+        # now order intuitively
+        reduce_size = 12
+        ordered_cos = Tex(r"\text{1. cos → прилеглий катет}", font_size=text_size - reduce_size, tex_template=UkrainianTexTemplate)
+        ordered_cos.next_to(cosin_text, DOWN, buff=0.5).align_to(cos_formula, LEFT)
+        ordered_sin = Tex(r"\text{2. sin → протилежний}", font_size=text_size - reduce_size, tex_template=UkrainianTexTemplate)
+        ordered_sin.next_to(ordered_cos, DOWN, buff=0.3, aligned_edge=LEFT)
+
+        # set black color first
+        ordered_cos[0][5:].set_color(BLACK)
+        ordered_sin[0][5:].set_color(BLACK)
+
+
+        if is_skipped:
+            ordered_cos.set_color(self.colors[0])
+            ordered_sin.set_color(self.colors[1])
+
+            self.add(cosin_text, ordered_cos, ordered_sin)
+
+        else:
+            self.play(Write(cossin_before))
+            self.wait()
+            self.play(TransformMatchingShapes(cossin_before, cossin_after))
+            self.wait()
+            self.play(Transform(cossin_after, cosin_text))
+            self.wait(2)
+            self.play(Succession(
+                Write(ordered_cos), Write(ordered_sin), lag_ratio=1
+            ))
+            self.wait()
+
+            # indicate first letters
+            sf = 1.5
+            self.play(Succession(
+                Indicate(ordered_cos[0][2], color=BLUE, scale_factor=sf),  # type: ignore
+                Indicate(ordered_sin[0][2], color=RED, scale_factor=sf),  # type: ignore
+                lag_ratio=1,
+            ))
+            self.wait()
+
+            # now indicate the cathetus of the triangle
+            triangle = self.triangle
+            self.play(Succession(
+                Indicate(triangle[0], color=YELLOW),  # type: ignore
+                Indicate(triangle[1], color=YELLOW),  # type: ignore
+                lag_ratio=1,
+            ))
+            self.wait()
+
+            # color the text in the formulas to WHITE (appear)
+            self.play(Succession(*[tex[0][5:].animate.set_color(WHITE) for tex in [ordered_cos, ordered_sin]], lag_ratio=1))  # type: ignore
+            self.wait()
+            # color the whole text in the formulas by intuitive colors
+            self.play(Succession(*[tex.animate.set_color(self.colors[i]) for i, tex in enumerate([ordered_cos, ordered_sin])], lag_ratio=1))  # type: ignore
+            self.wait()
+            # indicate cos in cos_formula and the numerator
+            self.play(Succession(Indicate(cos_formula[0][:3], color=BLUE), Indicate(cos_formula[0][7:16]), lag_ratio=1))  # type: ignore
+            self.wait()
+            # indicate sin in sin_formula and the numerator
+            self.play(Succession(Indicate(sin_formula[0][:3], color=RED), Indicate(sin_formula[0][7:18]), lag_ratio=1))  # type: ignore
+        self.wait()
+
+    def animate_remove_all_elements(self, els_to_leave: list[VMobject], is_skipped: bool = True):
+        mobject_to_dissolve = [m for m in self.mobjects if m not in els_to_leave]
+        triangle_shift = RIGHT * 2
+        if is_skipped:
+            self.remove(*mobject_to_dissolve)
+            self.triangle.shift(triangle_shift)
+        else:
+            self.play(FadeOut(Group(*mobject_to_dissolve)))
+            self.wait()
+            # move the remaining elements to the center
+            self.play(self.triangle.animate.shift(triangle_shift))
+        self.wait()
+
+    def animate_trig_similarity(self, triangle: VGroup, is_skipped: bool = True):
+        pass

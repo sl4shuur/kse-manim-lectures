@@ -1,4 +1,4 @@
-from src.utils.config import UkrainianTexTemplate
+from src.utils.manim_config import UkrainianTexTemplate
 from manim import Scene, Tex, Write
 
 

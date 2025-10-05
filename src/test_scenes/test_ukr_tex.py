@@ -1,5 +1,5 @@
 from manim import *  # type: ignore
-from src.utils.config import UkrainianTexTemplate
+from src.utils.manim_config import UkrainianTexTemplate
 
 
 class UkrainianTexTest(Scene):

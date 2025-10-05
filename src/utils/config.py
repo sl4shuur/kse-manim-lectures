@@ -1,4 +1,18 @@
 from pathlib import Path
+from manim import TexTemplate
+
+UkrainianTexTemplate = TexTemplate(
+    tex_compiler="xelatex",
+    description="Ukrainian TeX Template",
+    preamble=r"""
+    \usepackage{fontspec}
+    \usepackage{babel}
+    \babelprovide[import, main]{ukrainian}
+    \setmainfont{DejaVu Serif}
+    \usepackage{amsmath, amssymb}
+    """,
+    output_format=".xdv",
+)
 
 IS_DEBUG_MODE_ON = True
 

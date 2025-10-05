@@ -7,7 +7,7 @@ import sys
 project_root = str(Path(__file__).parent.parent)
 sys.path.insert(0, project_root)
 
-from UkrainianTexTemplate import UkrainianTexTemplate
+from src.utils.config import UkrainianTexTemplate
 from src.animations_sprites.ManimSprite import ManimSprite
 
 if __name__ == "__main__":

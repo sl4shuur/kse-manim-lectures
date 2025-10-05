@@ -13,7 +13,7 @@ UkrainianTexTemplate = TexTemplate(
     output_format=".xdv",
 )
 
-def turn_debug_mode_on(scene: Scene, opacity: float = 0.5) -> None:
+def turn_debug_mode_on(scene: Scene, opacity: float = 0.5) -> NumberPlane:
     """
     Enable debug mode by adding a grid to the scene with specified opacity.
     It helps in aligning and positioning elements during development.
@@ -22,8 +22,12 @@ def turn_debug_mode_on(scene: Scene, opacity: float = 0.5) -> None:
     Args:
         self (Scene): The scene to modify.
         opacity (float, optional): The opacity of the grid. Defaults to 0.5.
+
+    Returns:
+        NumberPlane: The grid added to the scene.
     """
     grid = NumberPlane()
     grid.set_opacity(opacity)
     scene.add(grid)
+    return grid
     

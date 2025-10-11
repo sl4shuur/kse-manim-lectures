@@ -319,55 +319,21 @@ class IntroToTrigonometry(Scene):
         triangle.shift(LEFT * 4 + DOWN * 1.5)
         self.animate_triangle(triangle, is_skipped=IS_DEBUG_MODE_ON)
 
-        self.animate_alpha_label(triangle, alpha_label_size=69, is_skipped=IS_DEBUG_MODE_ON)
-
         self.animate_sides_labels(triangle, text_size=33, is_skipped=IS_DEBUG_MODE_ON)
 
         self.animate_sincos_formulas(is_skipped=IS_DEBUG_MODE_ON)
 
-        els_to_leave = [self.debug_plane, self.triangle] if IS_DEBUG_MODE_ON else [self.triangle]
-
-        self.animate_remove_all_elements(els_to_leave=els_to_leave, is_skipped=False)  # type: ignore
-
+        self.animate_remove_all_except_triangle(triangle, is_skipped=False)
         self.wait()
 
     def create_triangle(
-        self, a: np.ndarray, b: np.ndarray, c: np.ndarray, stroke_width: int
+        self, a: np.ndarray, b: np.ndarray, c: np.ndarray, stroke_width: int, alpha_label_size: int = 69, buff: float = 0.4
     ) -> VGroup:
         line1 = Line(a, b, color=WHITE, stroke_width=stroke_width)
         line2 = Line(b, c, color=WHITE, stroke_width=stroke_width)
         line3 = Line(c, a, color=WHITE, stroke_width=stroke_width)
 
         adj_right_angle = RightAngle(line1, line2, length=0.5, color=WHITE, quadrant=(-1, 1))  # type: ignore
-
-        triangle = VGroup(line1, line2, line3, adj_right_angle)
-        return triangle
-
-    def animate_triangle(self, triangle: VGroup, is_skipped: bool = True):
-        right_angle = triangle[3]
-
-        if is_skipped:
-            self.add(triangle)
-        else:
-            self.play(
-                LaggedStart(
-                    AnimationGroup(*[Create(line) for line in triangle[:3]]),  # type: ignore
-                    Create(right_angle),  # type: ignore
-                    lag_ratio=1,
-                )
-            )
-        self.wait()
-
-    def animate_alpha_label(
-        self,
-        triangle: VGroup,
-        alpha_label_size: int = 48,
-        buff: float = 0.4,
-        is_skipped: bool = True,
-    ):
-        line1 = triangle[0]
-        line2 = triangle[1]
-        line3 = triangle[2]
 
         angle = Angle(line1, line3, radius=1, color=WHITE, quadrant=(1, -1))  # type: ignore
         alpha = MathTex(r"\alpha", font_size=alpha_label_size, color=WHITE)
@@ -379,12 +345,27 @@ class IntroToTrigonometry(Scene):
 
         alpha.move_to(arc_center + direction * (angle.radius + buff))
 
-        if is_skipped:
-            self.add(alpha, angle)
-        else:
-            self.play(LaggedStart(Create(angle), Write(alpha), lag_ratio=1))
+        triangle = VGroup(line1, line2, line3, adj_right_angle, angle, alpha)
+        return triangle
 
-        triangle.add(angle, alpha)
+    def animate_triangle(self, triangle: VGroup, is_skipped: bool = True):
+        """Animate triangle creation using copies, keeping originals inside the group."""
+        line1, line2, line3, right_angle = triangle[:4]
+        angle, alpha = triangle[4], triangle[5]
+
+        if is_skipped:
+            self.add(triangle)
+            return
+        
+        # Animate
+        self.play(
+            LaggedStart(
+                AnimationGroup(Create(line1), Create(line2), Create(line3)),  # type: ignore
+                Create(right_angle),  # type: ignore
+                lag_ratio=1,
+            )
+        )
+        self.play(LaggedStart(Create(angle), Write(alpha), lag_ratio=1))  # type: ignore
         self.wait()
 
     def animate_sides_labels(self, triangle: VGroup, text_size: int = 36, is_skipped: bool = True):
@@ -558,17 +539,26 @@ class IntroToTrigonometry(Scene):
             self.play(Succession(Indicate(sin_formula[0][:3], color=RED), Indicate(sin_formula[0][7:18]), lag_ratio=1))  # type: ignore
         self.wait()
 
-    def animate_remove_all_elements(self, els_to_leave: list[VMobject], is_skipped: bool = True):
-        mobject_to_dissolve = [m for m in self.mobjects if m not in els_to_leave]
-        triangle_shift = RIGHT * 2
+    def animate_remove_all_except_triangle(self, triangle: VGroup, is_skipped: bool = True):
+        """Hide all elements except the triangle."""
+        if triangle not in self.mobjects:
+            self.add(triangle)
+        
+        obj_to_remove = []
+        for obj in self.mobjects:
+            if obj not in triangle.get_family():
+                obj_to_remove.append(obj)
+
+        shift_vec = RIGHT * 2
         if is_skipped:
-            self.remove(*mobject_to_dissolve)
-            self.triangle.shift(triangle_shift)
-        else:
-            self.play(FadeOut(Group(*mobject_to_dissolve)))
-            self.wait()
-            # move the remaining elements to the center
-            self.play(self.triangle.animate.shift(triangle_shift))
+            self.remove(*obj_to_remove)
+            triangle.shift(shift_vec)
+            return
+        
+        self.play(FadeOut(*obj_to_remove))
+        self.wait()
+
+        self.play(triangle.animate.shift(shift_vec))
         self.wait()
 
     def animate_trig_similarity(self, triangle: VGroup, is_skipped: bool = True):

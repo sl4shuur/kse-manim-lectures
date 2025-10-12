@@ -41,7 +41,7 @@ def _start_docker() -> bool:
         for i in range(30):  # Wait up to 30 seconds
             time.sleep(1)
             if _is_docker_running():
-                print(f"Docker started successfully after {i+1} seconds!")
+                print(f"Docker started successfully after {i+1} seconds!\n")
                 return True
             if (i + 1) % 5 == 0:
                 print(f"Still waiting for Docker... ({i+1}/30 seconds)")
@@ -59,7 +59,7 @@ def ensure_docker_running() -> bool:
     print("Checking Docker status...")
 
     if _is_docker_running():
-        print("Docker is already running!")
+        print("Docker is already running!\n")
         return True
 
     print("Docker is not running.")

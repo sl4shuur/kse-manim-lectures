@@ -42,16 +42,18 @@ def _build_expected_video_path(module_name: str, class_name: str, quality: str) 
     return video_path, image_path
 
 
-def render_scene(scene_name: str, quality: str = "ql"):
-    """Render specified scene or default scene"""
-
+def render_scenes(scene_names: list[str], quality: str = "ql"):
+    """Render specified scenes or default scene"""
     # Ensure Docker is running
     if not ensure_docker_running():
         print("❌ Cannot proceed without Docker running.")
         print("Please start Docker manually and try again.")
         return
+    
+    print(f"Rendering scenes: {scene_names} with quality: {quality}")
 
-    if scene_name:
+    successful_scenes = []
+    for scene_name in scene_names:
         module_name, class_name = find_scene_by_name(scene_name)
         if not class_name:
             print(f"Scene '{scene_name}' not found!")
@@ -59,60 +61,62 @@ def render_scene(scene_name: str, quality: str = "ql"):
             all_scenes = get_all_scenes()
             for _, cls_name in all_scenes:
                 print(f"  {cls_name}")
-            return
-    else:
-        # Default scene if no argument provided
-        class_name = "Indications"
-        module_name = "test_scenes.test_ukr_tex"
+            continue
 
-    if not module_name:
-        print(f"Cannot determine module for scene '{class_name}'")
-        return
+        if not module_name:
+            print(f"Cannot determine module for scene '{class_name}'")
+            continue
 
-    # Calculate relative path from project root to the source file
-    project_dir = Path(__file__).resolve().parent
-    source_file_path = SOURCES_DIR / module_name.replace(".", "/")
-    source_file_path = source_file_path.with_suffix(".py")
+        # Calculate relative path from project root to the source file
+        project_dir = Path(__file__).resolve().parent
+        source_file_path = SOURCES_DIR / module_name.replace(".", "/")
+        source_file_path = source_file_path.with_suffix(".py")
 
-    # Get relative path from project root
-    file_name = source_file_path.relative_to(project_dir).as_posix()
+        # Get relative path from project root
+        file_name = source_file_path.relative_to(project_dir).as_posix()
 
-    print(f"\n🎬 Rendering scene: {class_name} with quality: {quality}")
+        print(f"\n🎬 Rendering scene: {class_name} with quality: {quality}")
 
-    command = (
-        f'docker run -it --rm -v "{project_dir}:/manim" -w /manim '
-        f"-e PYTHONPATH=/manim "
-        f"manimcommunity/manim manim {file_name} {class_name} -{quality}"
-    )
-    print(f"🐳 Running command: {command}")
+        command = (
+            f'docker run -it --rm -v "{project_dir}:/manim" -w /manim '
+            f"-e PYTHONPATH=/manim "
+            f"manimcommunity/manim manim {file_name} {class_name} -{quality}"
+        )
+        print(f"🐳 Running command: {command}")
 
-    try:
-        exit_code = os.system(command)
+        try:
+            exit_code = os.system(command)
 
-        if exit_code == 0:
-            print("\n✅ Rendering completed!")
+            if exit_code == 0:
+                print("\n✅ Rendering completed!")
+                successful_scenes.append(class_name)
 
-            # Build expected video path and show location
-            expected_path, image_path = _build_expected_video_path(module_name, class_name, quality)
-            if expected_path.exists():
-                print(f"📹 Video file ready at: {expected_path}")
+                # Build expected video path and show location
+                expected_path, image_path = _build_expected_video_path(module_name, class_name, quality)
+                if expected_path.exists():
+                    print(f"📹 Video file ready at: {expected_path}")
+                else:
+                    print("⚠️  Video file not found at expected location.")
+
+                if image_path.exists():
+                    print(f"🖼️ Image file ready at: {image_path}")
+                else:
+                    print("⚠️  Image file not found at expected location.")
             else:
-                print("⚠️  Video file not found at expected location.")
+                print(f"\n❌ Rendering failed with exit code: {exit_code}")
 
-            if image_path.exists():
-                print(f"🖼️ Image file ready at: {image_path}")
-            else:
-                print("⚠️  Image file not found at expected location.")
-        else:
-            print(f"\n❌ Rendering failed with exit code: {exit_code}")
+        except Exception as e:
+            print(f"❌ Error during rendering: {e}")
 
-    except Exception as e:
-        print(f"❌ Error during rendering: {e}")
+    print("\n🎉 Successfully rendered scenes:")
+    for scene in successful_scenes:
+        print(f"  - {scene}")
+
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Render Manim scenes")
-    parser.add_argument("scene", nargs="?", help="Scene class name to render")
+    parser.add_argument("scenes", nargs="?", help="Comma-separated list of scene class names to render")
     parser.add_argument(
         "-ql", "--quality-low", action="store_const", const="ql", dest="quality",
         help="Render in low quality (854x480p15FPS)"
@@ -147,8 +151,10 @@ if __name__ == "__main__":
         print("Available custom scenes:")
         for module_name, class_name in all_scenes:
             print(f"  {class_name} (from {module_name})")
-    elif args.scene:
-        render_scene(args.scene, args.quality)
+    elif args.scenes:
+        # Split scenes by comma and render each
+        scene_list = [scene.strip() for scene in args.scenes.split(",")]
+        render_scenes(scene_list, args.quality)
     else:
         # Show available scenes if no arguments
         all_scenes = get_all_scenes()

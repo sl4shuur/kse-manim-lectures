@@ -314,7 +314,7 @@ class IntroToTrigonometry(Scene):
         if IS_DEBUG_MODE_ON:
             self.debug_plane = turn_debug_mode_on(scene=self, opacity=0.5)
 
-        self.triangle = self.create_triangle(self.a, self.b, self.c, stroke_width=6)
+        self.triangle = self.create_triangle(self.a, self.b, self.c, stroke_width=6, alpha_label_size=69, buff=0.4)
         triangle = self.triangle
         triangle.shift(LEFT * 4 + DOWN * 1.5)
         self.animate_triangle(triangle, is_skipped=IS_DEBUG_MODE_ON)
@@ -323,7 +323,10 @@ class IntroToTrigonometry(Scene):
 
         self.animate_sincos_formulas(is_skipped=IS_DEBUG_MODE_ON)
 
-        self.animate_remove_all_except_triangle(triangle, is_skipped=False)
+        self.animate_remove_all_except_triangle(triangle, is_skipped=IS_DEBUG_MODE_ON)
+
+        self.animate_trig_similarity(triangle, alpha_label_size=69, buff=0.4, formulas_x=3, is_skipped=False)
+
         self.wait()
 
     def create_triangle(
@@ -551,6 +554,7 @@ class IntroToTrigonometry(Scene):
 
         shift_vec = RIGHT * 2
         if is_skipped:
+            turn_debug_mode_on(scene=self)
             self.remove(*obj_to_remove)
             triangle.shift(shift_vec)
             return
@@ -561,5 +565,98 @@ class IntroToTrigonometry(Scene):
         self.play(triangle.animate.shift(shift_vec))
         self.wait()
 
-    def animate_trig_similarity(self, triangle: VGroup, is_skipped: bool = True):
-        pass
+    def _copy_triangle_with_always_redraw(self, triangle: VGroup, alpha_label_size: float, buff: float, c_y: ValueTracker) -> VGroup:
+        """Create a dynamic copy of the triangle that updates as point C moves."""
+        line1, line2, line3, right_angle, angle, alpha = triangle
+        a, b = line1.get_start(), line1.get_end()
+
+        # Use always_redraw to dynamically update the triangle based on c_y
+        line1_copy = always_redraw(lambda: Line(a, b, color=line1.color, stroke_width=line1.stroke_width))
+        line2_copy = always_redraw(lambda: Line(b, np.array([b[0], c_y.get_value(), 0]), color=line2.color, stroke_width=line2.stroke_width))
+        line3_copy = always_redraw(lambda: Line(a, np.array([b[0], c_y.get_value(), 0]), color=line3.color, stroke_width=line3.stroke_width))
+        right_angle_copy = always_redraw(lambda: RightAngle(line1_copy, line2_copy, length=0.5, color=WHITE, quadrant=(-1, 1)))  # type: ignore
+
+        angle_copy = always_redraw(lambda: Angle(line1_copy, line3_copy, radius=1, color=WHITE, quadrant=(1, 1)))  # type: ignore
+        alpha_label = MathTex(r"\alpha", font_size=alpha_label_size, color=WHITE)
+
+        # Dynamically update direction for alpha_copy
+        alpha_copy = always_redraw(lambda: alpha_label.move_to(
+            line1_copy.get_start() + (line2_copy.point_from_proportion(0.35) - line1_copy.get_start()) / np.linalg.norm(
+                line2_copy.point_from_proportion(0.35) - line1_copy.get_start()
+            ) * (angle_copy.radius + buff)  # type: ignore
+        ))
+
+        triangle_copy = VGroup(line1_copy, line2_copy, line3_copy, right_angle_copy, angle_copy, alpha_copy)  # type: ignore
+        return triangle_copy
+    
+    def animate_trig_similarity(self, triangle: VGroup, alpha_label_size: float, buff: float, formulas_x: float, is_skipped: bool = True):
+        """Animate the triangle dynamically changing as point C moves and display dynamic sin/cos values."""
+        # Create a ValueTracker for the y-coordinate of point C
+        c = triangle[1].get_end()
+        c_y = ValueTracker(c[1])
+
+        # Create a dynamic copy of the triangle
+        triangle_copy = self._copy_triangle_with_always_redraw(triangle, alpha_label_size, buff, c_y)
+
+        # Function to calculate dynamic sin and cos values
+        def get_dynamic_values():
+            adjacent_length = np.linalg.norm(triangle_copy[0].get_vector())
+            opposite_length = np.linalg.norm(triangle_copy[1].get_vector())
+            hypotenuse_length = np.linalg.norm(triangle_copy[2].get_vector())
+
+            sin_value = round(opposite_length / hypotenuse_length, 2)
+            cos_value = round(adjacent_length / hypotenuse_length, 2)
+
+            return sin_value, cos_value
+
+        # Create dynamic labels for sin and cos
+        cos_color = triangle_copy[0].color
+        sin_color = triangle_copy[1].color
+        sin_label = always_redraw(lambda: MathTex(
+            rf"\sin(\alpha) = {get_dynamic_values()[0]}",
+            font_size=55,
+            color=sin_color
+        ).to_edge(UR, buff=1).align_to(np.array([formulas_x, 0, 0]), LEFT))  # Fix left alignment
+
+        cos_label = always_redraw(lambda: MathTex(
+            rf"\cos(\alpha) = {get_dynamic_values()[1]}",
+            font_size=55,
+            color=cos_color
+        ).next_to(sin_label, DOWN, aligned_edge=LEFT, buff=0.5).align_to(sin_label, LEFT))
+
+        if is_skipped:
+            self.add(triangle_copy, sin_label, cos_label)
+            return
+
+        # Remove the old triangle
+        self.remove(triangle)
+
+        # Add the dynamic triangle and labels to the scene
+        self.add(triangle_copy)
+
+        # Animate the appearance of labels
+        self.play(FadeIn(sin_label, scale=1.2), FadeIn(cos_label, scale=1.2))
+        self.wait()
+
+        # Animate the movement of point C up and down
+        start_value = c_y.get_value()
+        self.play(c_y.animate.set_value(0), run_time=3)
+        self.play(c_y.animate.set_value(3.5), run_time=3)
+        # self.play(c_y.animate.set_value(1), run_time=3)
+        self.play(c_y.animate.set_value(start_value), run_time=3)
+        self.wait()
+
+        # Now return back the original triangle but with 50% opacity and scale it around ORIGIN
+        self.add(triangle)
+        ghost = triangle.set_stroke(opacity=0.5)
+
+        first_scale = 1.5
+        second_scale = 0.3
+        third_scale = 3.5
+        final_scale = 1.0 / (first_scale * second_scale * third_scale)
+
+        self.play(ghost.animate.scale(first_scale, about_point=ORIGIN), run_time=3)
+        self.play(ghost.animate.scale(second_scale, about_point=ORIGIN), run_time=3)
+        self.play(ghost.animate.scale(third_scale, about_point=ORIGIN), run_time=3)
+        self.play(ghost.animate.scale(final_scale, about_point=ORIGIN), run_time=3)
+        self.wait()

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-IS_DEBUG_MODE_ON = True
+IS_DEBUG_MODE_ON = False
 
 # Base of the project
 BASE_DIR = Path(__file__).parent.parent.parent

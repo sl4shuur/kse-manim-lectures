@@ -57,7 +57,7 @@ def _activate_venv(venv_path: Path) -> bool:
         site_packages = (
             venv_path / "Lib" / "site-packages"
             if os.name == "nt"
-            else venv_path / "lib" / "python3.11" / "site-packages"
+            else venv_path / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
         )
         if site_packages.exists() and str(site_packages) not in sys.path:
             sys.path.insert(0, str(site_packages))

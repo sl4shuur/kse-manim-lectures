@@ -113,7 +113,6 @@ def render_scenes(scene_names: list[str], quality: str = "ql"):
         print(f"  - {scene}")
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Render Manim scenes")
     parser.add_argument("scenes", nargs="?", help="Comma-separated list of scene class names to render")

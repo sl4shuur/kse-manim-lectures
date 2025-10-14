@@ -42,80 +42,65 @@ def _build_expected_video_path(module_name: str, class_name: str, quality: str) 
     return video_path, image_path
 
 
-def render_scenes(scene_names: list[str], quality: str = "ql"):
-    """Render specified scenes or default scene"""
-    # Ensure Docker is running
-    if not ensure_docker_running():
-        print("❌ Cannot proceed without Docker running.")
-        print("Please start Docker manually and try again.")
-        return
-    
-    print(f"Rendering scenes: {scene_names} with quality: {quality}")
+def render_scene(scene_name: str, quality: str, project_dir: Path) -> bool:
+    """Render a single scene."""
+    print(f"Rendering scene: {scene_name} with quality: {quality}")
 
-    successful_scenes = []
-    for scene_name in scene_names:
-        module_name, class_name = find_scene_by_name(scene_name)
-        if not class_name:
-            print(f"Scene '{scene_name}' not found!")
-            print("Available scenes:")
-            all_scenes = get_all_scenes()
-            for _, cls_name in all_scenes:
-                print(f"  {cls_name}")
-            continue
+    module_name, class_name = find_scene_by_name(scene_name)
+    if not class_name:
+        print(f"Scene '{scene_name}' not found!")
+        print_available_scenes()
+        return False
 
-        if not module_name:
-            print(f"Cannot determine module for scene '{class_name}'")
-            continue
+    if not module_name:
+        print(f"Cannot determine module for scene '{class_name}'")
+        return False
 
-        # Calculate relative path from project root to the source file
-        project_dir = Path(__file__).resolve().parent
-        source_file_path = SOURCES_DIR / module_name.replace(".", "/")
-        source_file_path = source_file_path.with_suffix(".py")
+    # Calculate relative path from project root to the source file
+    source_file_path = SOURCES_DIR / module_name.replace(".", "/")
+    source_file_path = source_file_path.with_suffix(".py")
+    file_name = source_file_path.relative_to(project_dir).as_posix()
 
-        # Get relative path from project root
-        file_name = source_file_path.relative_to(project_dir).as_posix()
+    print(f"\n🎬 Rendering scene: {class_name} with quality: {quality}")
 
-        print(f"\n🎬 Rendering scene: {class_name} with quality: {quality}")
+    command = (
+        f'docker run -it --rm -v "{project_dir}:/manim" -w /manim '
+        f"-e PYTHONPATH=/manim "
+        f"manimcommunity/manim manim {file_name} {class_name} -{quality}"
+    )
+    print(f"🐳 Running command: {command}")
 
-        command = (
-            f'docker run -it --rm -v "{project_dir}:/manim" -w /manim '
-            f"-e PYTHONPATH=/manim "
-            f"manimcommunity/manim manim {file_name} {class_name} -{quality}"
-        )
-        print(f"🐳 Running command: {command}")
+    try:
+        exit_code = os.system(command)
 
-        try:
-            exit_code = os.system(command)
-
-            if exit_code == 0:
-                print("\n✅ Rendering completed!")
-                successful_scenes.append(class_name)
-
-                # Build expected video path and show location
-                expected_path, image_path = _build_expected_video_path(module_name, class_name, quality)
-                if expected_path.exists():
-                    print(f"📹 Video file ready at: {expected_path}")
-                else:
-                    print("⚠️  Video file not found at expected location.")
-
-                if image_path.exists():
-                    print(f"🖼️ Image file ready at: {image_path}")
-                else:
-                    print("⚠️  Image file not found at expected location.")
+        if exit_code == 0:
+            print("\n✅ Rendering completed!")
+            expected_path, image_path = _build_expected_video_path(
+                module_name, class_name, quality)
+            if expected_path.exists():
+                print(f"📹 Video file ready at: {expected_path}")
             else:
-                print(f"\n❌ Rendering failed with exit code: {exit_code}")
+                print("⚠️  Video file not found at expected location.")
 
-        except Exception as e:
-            print(f"❌ Error during rendering: {e}")
+            if image_path.exists():
+                print(f"🖼️ Image file ready at: {image_path}")
+            else:
+                print("⚠️  Image file not found at expected location.")
+            return True
+        else:
+            print(f"\n❌ Rendering failed with exit code: {exit_code}")
+            return False
 
-    print("\n🎉 Successfully rendered scenes:")
-    for scene in successful_scenes:
-        print(f"  - {scene}")
+    except Exception as e:
+        print(f"❌ Error during rendering: {e}")
+        return False
 
 
-if __name__ == "__main__":
+def parse_arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Render Manim scenes")
-    parser.add_argument("scenes", nargs="?", help="Comma-separated list of scene class names to render")
+    parser.add_argument(
+        "scenes", nargs="?", help="Comma-separated list of scene class names to render")
     parser.add_argument(
         "-ql", "--quality-low", action="store_const", const="ql", dest="quality",
         help="Render in low quality (854x480p15FPS)"
@@ -142,31 +127,58 @@ if __name__ == "__main__":
 
     # Set default quality if none specified
     parser.set_defaults(quality="ql")
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+def print_available_scenes():
+    """Print all available scenes."""
+    all_scenes = get_all_scenes()
+    print("Available custom scenes:")
+    for module_name, class_name in all_scenes:
+        print(f"  {class_name} (from {module_name})")
+
+
+def print_usage():
+    """Print usage and available quality options"""
+    print("\nUsage:")
+    print("  python render.py <scene_name> [-ql|-qm|-qh|-qp|-qk]  # Render scene with quality (default: -ql, low)")
+    print("  python render.py --list                              # List all scenes")
+    print("  python render.py                                     # Show this help")
+    print("\nQuality options:")
+    print("  -ql, --quality-low         Low quality (854x480p15FPS)")
+    print("  -qm, --quality-medium      Medium quality (1280x720p30FPS)")
+    print("  -qh, --quality-high        High quality (1920x1080p60FPS)")
+    print("  -qp, --quality-production  Production 2K quality (2560x1440p60FPS)")
+    print("  -qk, --quality-4k          4K quality (3840x2160p60FPS)")
+
+
+if __name__ == "__main__":
+    args = parse_arguments()
 
     if args.list:
-        all_scenes = get_all_scenes()
-        print("Available custom scenes:")
-        for module_name, class_name in all_scenes:
-            print(f"  {class_name} (from {module_name})")
+        print_available_scenes()
     elif args.scenes:
-        # Split scenes by comma and render each
+        # Ensure Docker is running
+        if not ensure_docker_running():
+            print("❌ Cannot proceed without Docker running.")
+            print("Please start Docker manually and try again.")
+            raise SystemExit(1)
+
         scene_list = [scene.strip() for scene in args.scenes.split(",")]
-        render_scenes(scene_list, args.quality)
+        project_dir = Path(__file__).resolve().parent
+        print(
+            f"Rendering scenes: {', '.join(scene_list)} with quality: {args.quality}")
+
+        successful_scenes = []
+        for scene_name in scene_list:
+            if render_scene(scene_name, args.quality, project_dir):
+                successful_scenes.append(scene_name)
+
+        succ_num = len(successful_scenes)
+        all_num = len(scene_list)
+        print(f"\n🎉 Successfully rendered scenes [{succ_num}/{all_num}]:")
+        for scene in successful_scenes:
+            print(f"  - {scene}")
     else:
-        # Show available scenes if no arguments
-        all_scenes = get_all_scenes()
-        print("Available custom scenes:")
-        for module_name, class_name in all_scenes:
-            print(f"  {class_name}")
-        print("\nUsage:")
-        print("  python render.py <scene_name> [-ql|-qm|-qh|-qp|-qk]  # Render scene with quality (default: -ql, low)")
-        print("  python render.py --list                              # List all scenes")
-        print("  python render.py                                     # Show this help")
-        print("\nQuality options:")
-        print("  -ql, --quality-low         Low quality (854x480p15FPS)")
-        print("  -qm, --quality-medium      Medium quality (1280x720p30FPS)")
-        print("  -qh, --quality-high        High quality (1920x1080p60FPS)")
-        print("  -qp, --quality-production  Production 2K quality (2560x1440p60FPS)")
-        print("  -qk, --quality-4k          4K quality (3840x2160p60FPS)")
+        print_available_scenes()
+        print_usage()

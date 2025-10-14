@@ -23,7 +23,7 @@ def get_all_scenes() -> list[tuple[str, str]]:
     Get only custom scene classes, excluding built-in Manim classes
 
     Returns:
-        list[tuple[str, str]]: List of tuples containing (module_path, class_name)
+        list[tuple[str, str]]: List of tuples containing (module_path#line_number, class_name)
     """
     scenes = []
 
@@ -47,7 +47,9 @@ def get_all_scenes() -> list[tuple[str, str]]:
                             and name not in BUILTIN_SCENES
                             and obj.__module__ == module_name
                         ):  # Only classes defined in this module
-                            scenes.append((str(module_path.resolve()), name))
+                            # Get line number where the class is defined
+                            _, line_number = inspect.getsourcelines(obj)
+                            scenes.append((f"{str(module_path.resolve())}#{line_number}", name))
                 except Exception as e:
                     print(f"Error importing {module_path}: {e}")
     return scenes

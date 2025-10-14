@@ -56,8 +56,20 @@ def get_all_scenes() -> list[tuple[str, str]]:
 
 
 def find_scene_by_name(scene_name: str) -> tuple[str, str] | tuple[None, None]:
-    """Find scene class by name"""
+    """
+    Find scene class by name
+
+    Args:
+        scene_name (str): The name of the scene class to find.
+
+    Returns:
+        tuple[str, str] | tuple[None, None]: Tuple of (module_path, class_name) if found, else (None, None).
+    """
     all_scenes = get_all_scenes()
+
+    # remove line numbers from module paths for comparison
+    all_scenes = [(str(Path(module_path).with_suffix("")), class_name) for module_path, class_name in all_scenes]
+
     for module_path, class_name in all_scenes:
         if class_name == scene_name:
             return module_path, class_name

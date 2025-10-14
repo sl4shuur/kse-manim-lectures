@@ -31,42 +31,44 @@ def _get_quality_folder(quality: str) -> str:
     return quality_mapping.get(quality, "480p15")
 
 
-def _build_expected_video_path(module_name: str, class_name: str, quality: str) -> tuple[Path, Path]:
+def _build_expected_video_path(module_path: str, class_name: str, quality: str) -> tuple[Path, Path]:
     """Build expected local video path"""
-    # Extract file name from module (e.g., "animations_lectures.24_1" -> "24_1")
-    file_name = module_name.split(".")[-1]
+    # Convert module_path to module_name (e.g., "src/animations_sprites/manim_sprites" -> "animations_sprites.manim_sprites")
+    module_name = Path(module_path).stem if "." not in module_path else module_path.split(".")[-1]
     quality_folder = _get_quality_folder(quality)
     media_dir = Path("media")
-    video_path = media_dir / "videos" / file_name / quality_folder / f"{class_name}.mp4"
-    image_path = media_dir / "images" / file_name / f"{class_name}_ManimCE_v0.19.0.png"
+    video_path = media_dir / "videos" / module_name / quality_folder / f"{class_name}.mp4"
+    image_path = media_dir / "images" / module_name / f"{class_name}_ManimCE_v0.19.0.png"
     return video_path, image_path
 
 
-def render_scene(scene_name: str, quality: str, project_dir: Path) -> bool:
+def render_scene(scene_name: str, quality: str, project_dir: Path, transparent: bool = False) -> bool:
     """Render a single scene."""
     print(f"Rendering scene: {scene_name} with quality: {quality}")
 
-    module_name, class_name = find_scene_by_name(scene_name)
+    module_path, class_name = find_scene_by_name(scene_name)
     if not class_name:
         print(f"Scene '{scene_name}' not found!")
         print_available_scenes()
         return False
 
-    if not module_name:
+    if not module_path:
         print(f"Cannot determine module for scene '{class_name}'")
         return False
 
     # Calculate relative path from project root to the source file
-    source_file_path = SOURCES_DIR / module_name.replace(".", "/")
+    source_file_path = SOURCES_DIR / module_path.replace(".", "/")
     source_file_path = source_file_path.with_suffix(".py")
     file_name = source_file_path.relative_to(project_dir).as_posix()
 
     print(f"\n🎬 Rendering scene: {class_name} with quality: {quality}")
 
+    transparent_flag = "-t" if transparent else ""
+
     command = (
         f'docker run -it --rm -v "{project_dir}:/manim" -w /manim '
         f"-e PYTHONPATH=/manim "
-        f"manimcommunity/manim manim {file_name} {class_name} -{quality}"
+        f"manimcommunity/manim manim {file_name} {class_name} -{quality} {transparent_flag}"
     )
     print(f"🐳 Running command: {command}")
 
@@ -76,11 +78,16 @@ def render_scene(scene_name: str, quality: str, project_dir: Path) -> bool:
         if exit_code == 0:
             print("\n✅ Rendering completed!")
             expected_path, image_path = _build_expected_video_path(
-                module_name, class_name, quality)
+                module_path, class_name, quality)
             if expected_path.exists():
                 print(f"📹 Video file ready at: {expected_path}")
             else:
-                print("⚠️  Video file not found at expected location.")
+                # try to change .mp4 to .mov
+                alt_path = expected_path.with_suffix(".mov")
+                if alt_path.exists():
+                    print(f"📹 Video file ready at: {alt_path}")
+                else:
+                    print("⚠️  Video file not found at expected location.")
 
             if image_path.exists():
                 print(f"🖼️ Image file ready at: {image_path}")
@@ -122,6 +129,9 @@ def parse_arguments() -> argparse.Namespace:
         help="Render in 4K quality (3840x2160p60FPS)"
     )
     parser.add_argument(
+        "--transparent", "-t", action="store_true", help="Render scene with transparent background (alpha channel)"
+    )
+    parser.add_argument(
         "--list", "-l", action="store_true", help="List all available scenes"
     )
 
@@ -134,8 +144,8 @@ def print_available_scenes():
     """Print all available scenes."""
     all_scenes = get_all_scenes()
     print("Available custom scenes:")
-    for module_name, class_name in all_scenes:
-        print(f"  {class_name} (from {module_name})")
+    for module_path, class_name in all_scenes:
+        print(f"- {class_name} ({module_path})")
 
 
 def print_usage():
@@ -167,11 +177,12 @@ if __name__ == "__main__":
         scene_list = [scene.strip() for scene in args.scenes.split(",")]
         project_dir = Path(__file__).resolve().parent
         print(
-            f"Rendering scenes: {', '.join(scene_list)} with quality: {args.quality}")
+            f"Rendering scenes: {', '.join(scene_list)} with quality: {args.quality}{' (transparent)' if args.transparent else ''}"
+        )
 
         successful_scenes = []
         for scene_name in scene_list:
-            if render_scene(scene_name, args.quality, project_dir):
+            if render_scene(scene_name, args.quality, project_dir, args.transparent):
                 successful_scenes.append(scene_name)
 
         succ_num = len(successful_scenes)

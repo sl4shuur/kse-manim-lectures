@@ -19,14 +19,22 @@ BUILTIN_SCENES = {
 
 
 def get_all_scenes() -> list[tuple[str, str]]:
-    """Get only custom scene classes, excluding built-in Manim classes"""
+    """
+    Get only custom scene classes, excluding built-in Manim classes
+
+    Returns:
+        list[tuple[str, str]]: List of tuples containing (module_path, class_name)
+    """
     scenes = []
 
+    # Add SOURCES_DIR to sys.path
     sys.path.append(str(SOURCES_DIR))
+
     for root, _, files in os.walk(SOURCES_DIR):
         for file in files:
             if file.endswith(".py"):
                 module_path = Path(root) / file
+                # Convert the path to a module name (e.g., src.animations_lectures.24_1)
                 relative_module = module_path.relative_to(SOURCES_DIR).with_suffix("")
                 module_name = ".".join(relative_module.parts)
                 try:
@@ -39,16 +47,16 @@ def get_all_scenes() -> list[tuple[str, str]]:
                             and name not in BUILTIN_SCENES
                             and obj.__module__ == module_name
                         ):  # Only classes defined in this module
-                            scenes.append((module_name, name))
+                            scenes.append((str(module_path.resolve()), name))
                 except Exception as e:
-                    print(f"Error importing {module_name}: {e}")
+                    print(f"Error importing {module_path}: {e}")
     return scenes
 
 
 def find_scene_by_name(scene_name: str) -> tuple[str, str] | tuple[None, None]:
     """Find scene class by name"""
     all_scenes = get_all_scenes()
-    for module_name, class_name in all_scenes:
+    for module_path, class_name in all_scenes:
         if class_name == scene_name:
-            return module_name, class_name
+            return module_path, class_name
     return None, None

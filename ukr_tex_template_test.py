@@ -1,17 +1,5 @@
-from manim import TexTemplate, Scene, Tex, Write
-
-UkrainianTexTemplate = TexTemplate(
-    tex_compiler="xelatex",
-    description="Ukrainian TeX Template",
-    preamble=r"""
-    \usepackage{fontspec}
-    \usepackage{babel}
-    \babelprovide[import, main]{ukrainian}
-    \setmainfont{DejaVu Serif}
-    \usepackage{amsmath, amssymb}
-    """,
-    output_format=".xdv",
-)
+from src.utils.manim_config import UkrainianTexTemplate
+from manim import Scene, Tex, Write
 
 
 class HelloDocker(Scene):

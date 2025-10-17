@@ -325,7 +325,9 @@ class IntroToTrigonometry(Scene):
 
         self.animate_remove_all_except_triangle(triangle, is_skipped=IS_DEBUG_MODE_ON)
 
-        self.animate_trig_similarity(triangle, alpha_label_size=69, buff=0.4, formulas_x=3, is_skipped=False)
+        self.animate_trig_similarity(triangle, alpha_label_size=69, buff=0.4, formulas_x=3, is_skipped=IS_DEBUG_MODE_ON)
+
+        self.animate_question_mark(opacity=0.1, is_skipped=False)
 
         self.wait()
 
@@ -624,8 +626,10 @@ class IntroToTrigonometry(Scene):
             color=cos_color
         ).next_to(sin_label, DOWN, aligned_edge=LEFT, buff=0.5).align_to(sin_label, LEFT))
 
+        rect = SurroundingRectangle(VGroup(sin_label, cos_label), buff=0.2, color=WHITE)  # type: ignore
+
         if is_skipped:
-            self.add(triangle_copy, sin_label, cos_label)
+            self.add(triangle_copy, sin_label, cos_label, rect)
             return
 
         # Remove the old triangle
@@ -659,4 +663,63 @@ class IntroToTrigonometry(Scene):
         self.play(ghost.animate.scale(second_scale, about_point=ORIGIN), run_time=3)
         self.play(ghost.animate.scale(third_scale, about_point=ORIGIN), run_time=3)
         self.play(ghost.animate.scale(final_scale, about_point=ORIGIN), run_time=3)
+        self.wait()
+
+        # at the end draw surrounding rectangle around formulas
+        self.play(DrawBorderThenFill(rect))
+        self.wait()
+
+    def animate_question_mark(self, opacity: float, is_skipped: bool = True):
+        """Animate a question mark appearing while fading other objects to a lower opacity."""
+        big_question_mark = Text("?", font_size=221, color=RED).set_z_index(3)
+        all_objects = self.mobjects.copy()
+    
+        # Collect all low-level objects without modifying the original list during iteration
+        low_level_objects = []
+        for obj in all_objects:
+            if isinstance(obj, VGroup):
+                low_level_objects.extend(obj.get_family())
+            else:
+                low_level_objects.append(obj)
+    
+        if is_skipped:
+            for obj in low_level_objects:
+                if isinstance(obj, (Tex, MathTex)):
+                    obj.set_fill(opacity=opacity)
+                    obj.set_stroke(opacity=opacity)
+                elif hasattr(obj, "set_opacity"):
+                    obj.set_opacity(opacity)
+                elif hasattr(obj, "set_stroke"):
+                    obj.set_stroke(opacity=opacity)
+            self.add(big_question_mark)
+            return
+    
+        # # Change opacity of all objects while fading in the question mark
+        # # BUG: unexcpected behavior with VGroups containing Tex/MathTex...
+        # fade_out_anims = []
+        # for obj in low_level_objects:
+        #     if isinstance(obj, (Tex, MathTex)):
+        #         fade_out_anims.append(obj.animate.set_stroke(opacity=opacity))
+        #         fade_out_anims.append(obj.animate.set_fill(opacity=opacity))
+        #     elif hasattr(obj, "set_stroke"):
+        #         fade_out_anims.append(obj.animate.set_stroke(opacity=opacity))
+        #     elif hasattr(obj, "set_opacity"):
+        #         fade_out_anims.append(obj.animate.set_opacity(opacity))
+    
+        black_square = Square(side_length=100, fill_color=BLACK, fill_opacity=0, stroke_opacity=0).set_z_index(2)
+        fade_out_anims = [black_square.animate(run_time=3).set_fill(opacity=1-opacity)]  # type: ignore
+
+        big_question_mark_appear = FadeIn(big_question_mark, scale=0.5, run_time=5)
+        self.play(*fade_out_anims, big_question_mark_appear)
+    
+        # # Explicitly set opacity after animation to ensure it persists
+        # for obj in low_level_objects:
+        #     if isinstance(obj, (Tex, MathTex)):
+        #         obj.set_fill(opacity=opacity)
+        #         obj.set_stroke(opacity=opacity)
+        #     elif hasattr(obj, "set_stroke"):
+        #         obj.set_stroke(opacity=opacity)
+        #     elif hasattr(obj, "set_opacity"):
+        #         obj.set_opacity(opacity)
+    
         self.wait()

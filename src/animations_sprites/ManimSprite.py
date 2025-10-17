@@ -4,6 +4,16 @@ from manim import SVGMobject
 
 
 class ManimSprite:
+    """
+    Manim SVGMobject wrapper for handling 2D sprite animations.
+
+    Available sprites:
+    - adventurer
+    - player
+    - soldier
+    - zombie
+    - female
+    """
     def __init__(
         self,
         sprite_name: str = "player",

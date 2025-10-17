@@ -10,7 +10,12 @@ from src.utils.config import POSES_NUM_LIST
 
 class PoseSwitcher(Scene):
     def construct(self):
-        sprite = ManimSprite("adventurer")
+        sprite = ManimSprite("player")
+
+        # animate the appearance
+        self.play(DrawBorderThenFill(sprite.cur_manim_svgmobject))
+        self.wait()
+        self.clear()
 
         # for loop to check all poses changing animations
         for i in range(len(POSES_NUM_LIST)):
@@ -26,8 +31,13 @@ class PoseSwitcher(Scene):
 
                     self.add(init_pose, text)
                     self.play(Transform(init_pose, cur_pose), run_time=1)
+                    self.wait()
                     self.clear()
-                    self.wait(0.2)
+
+        # animate the disappearance (for 14 poses it looks better)
+        sprite.change_pose("14")
+        self.play(DrawBorderThenFill(sprite.cur_manim_svgmobject), reverse=True)
+        self.wait()
 
 class AllSpritesAnimation(Scene):
     def construct(self):
